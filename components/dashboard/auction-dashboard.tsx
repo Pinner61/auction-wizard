@@ -264,7 +264,7 @@ export default function AuctionDashboard({ onCreateAuction }: AuctionDashboardPr
     totalValue: auctions.reduce((sum, a) => sum + (a.currentBid || a.startPrice), 0),
   }
 
-  if (user?.role === "auctioneer" && auctions.length === 0) {
+  if (user?.role === "seller" && auctions.length === 0) {
     // Show create auction prompt for auctioneers with no auctions
     return (
       <div className="space-y-6">
@@ -299,12 +299,6 @@ export default function AuctionDashboard({ onCreateAuction }: AuctionDashboardPr
         ? "Manage and monitor all auctions across the platform"
         : "Manage your auction listings and track performance"}
     </p>
-  </div>
-  <div className="flex items-center gap-2">
-    <Button onClick={onCreateAuction} className="bg-corporate-600 hover:bg-corporate-700">
-      <Plus className="w-4 h-4 mr-2" />
-      Create New Auction
-    </Button>
   </div>
 </div>
 
