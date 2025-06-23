@@ -14,6 +14,12 @@ import LanguageSelector from "./components/language-selector"
 import ApiKeySetup from "./components/api-key-setup"
 import { I18nProvider, useTranslation } from "./i18n/i18n-context"
 import type { AuctionFormData, AuctionTemplate, UploadedFile, Currency, Language } from "./types/auction-types"
+import { createClient } from '@supabase/supabase-js';
+// Initialize Supabase client
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 import {
   validateStep1,
   validateStep2,
@@ -472,12 +478,38 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
   }
 
   // Handler for uploaded images
-  const handleImagesUploaded = (newImages: UploadedFile[]) => {
-    setFormData({
-      ...formData,
-      productImages: [...formData.productImages, ...newImages],
+// Handler for uploaded images
+const handleImagesUploaded = async (newImages: UploadedFile[]) => {
+  const uploadedFiles = await Promise.all(
+    newImages.map(async (file) => {
+      const fileName = `${Date.now()}_${file.name}`;
+      const { data, error: uploadError } = await supabase.storage
+        .from("auctions")
+        .upload(`public/${fileName}`, file, { upsert: true });
+
+      if (uploadError) {
+        console.error('Error uploading image:', uploadError);
+        return file; // Return original file if upload fails
+      }
+
+      // Get the public URL of the uploaded file
+      const { data: urlData } = supabase.storage
+        .from('auctions')
+        .getPublicUrl(`public/${fileName}`);
+
+      return {
+        ...file,
+        url: urlData.publicUrl, // Store the public URL
+        id: data.path, // Use the path as a unique ID
+      };
     })
-  }
+  );
+
+  setFormData({
+    ...formData,
+    productImages: [...formData.productImages, ...uploadedFiles],
+  });
+};
 
   // Handler for uploaded documents
   const handleDocumentsUploaded = (newDocuments: UploadedFile[]) => {
