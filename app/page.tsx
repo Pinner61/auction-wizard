@@ -1,22 +1,25 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import AuctionBuilderWizard from "../auction-wizard"
-import AuctionDashboard from "../components/dashboard/auction-dashboard"
-import UserProfile from "../components/auth/user-profile"
-import { AuthProvider, useAuth } from "../components/auth/auth-provider"
-import AuthGuard from "../components/auth/auth-guard"
-import { ThemeProvider } from "../theme-context"
-import { User, Plus, Gavel, ArrowLeft, LayoutDashboard } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { useState } from "react";
+import AuctionBuilderWizard from "../auction-wizard";
+import AuctionDashboard from "../components/dashboard/auction-dashboard";
+import UserProfile from "../components/auth/user-profile";
+import { AuthProvider, useAuth } from "../components/auth/auth-provider";
+import AuthGuard from "../components/auth/auth-guard";
+import { ThemeProvider } from "../theme-context";
+import { User, Plus, Gavel, ArrowLeft, LayoutDashboard } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-type ViewMode = "dashboard" | "create-auction"
+type ViewMode = "dashboard" | "create-auction";
 
 function DashboardHeader({ viewMode, onViewChange }: { viewMode: ViewMode; onViewChange: (mode: ViewMode) => void }) {
-  const { user, logout, updateUser } = useAuth()
-  const [showProfile, setShowProfile] = useState(false)
+  const { user, logout, updateUser } = useAuth();
+  const [showProfile, setShowProfile] = useState(false);
 
-  if (!user) return null
+  if (!user) return null;
+
+  // Use fname and lname for the welcome message
+  const displayName = (user.fname || user.lname);
 
   return (
     <>
@@ -28,12 +31,14 @@ function DashboardHeader({ viewMode, onViewChange }: { viewMode: ViewMode; onVie
                 <img
                   src="/briskon-auction-horizontal-logo-white.png"
                   alt="Briskon logo"
-                  className="w-15 h-7 mr-6" // Reduced from w-8 h-8 to w-6 h-6
+                  className="w-15 h-7 mr-6"
                 />
                 <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Auction Portal</h1>
               </div>
               <div className="ml-6 flex items-center space-x-4">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Welcome back, {user.name}</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  Welcome back, {displayName}
+                </span>
                 <span className="px-2 py-1 text-xs font-medium bg-corporate-100 text-corporate-800 dark:bg-corporate-900/30 dark:text-corporate-300 rounded-full">
                   {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                 </span>
@@ -83,8 +88,8 @@ function DashboardHeader({ viewMode, onViewChange }: { viewMode: ViewMode; onVie
             <UserProfile
               user={user}
               onLogout={() => {
-                logout()
-                setShowProfile(false)
+                logout();
+                setShowProfile(false);
               }}
               onUpdateUser={updateUser}
             />
@@ -100,12 +105,12 @@ function DashboardHeader({ viewMode, onViewChange }: { viewMode: ViewMode; onVie
         </div>
       )}
     </>
-  )
+  );
 }
 
 function AuthenticatedApp() {
-  const { user } = useAuth()
-  const [viewMode, setViewMode] = useState<ViewMode>("dashboard")
+  const { user } = useAuth();
+  const [viewMode, setViewMode] = useState<ViewMode>("dashboard");
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -115,13 +120,13 @@ function AuthenticatedApp() {
         {viewMode === "dashboard" ? (
           <AuctionDashboard onCreateAuction={() => setViewMode("create-auction")} />
         ) : (
-          <AuthGuard requiredRole={["admin", "auctioneer", "organization"]}>
+          <AuthGuard requiredRole={["admin", "seller", "both"]}>
             <AuctionBuilderWizard />
           </AuthGuard>
         )}
       </main>
     </div>
-  )
+  );
 }
 
 export default function Page() {
@@ -133,5 +138,5 @@ export default function Page() {
         </AuthGuard>
       </AuthProvider>
     </ThemeProvider>
-  )
+  );
 }
