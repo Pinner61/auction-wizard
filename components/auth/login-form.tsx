@@ -1,101 +1,119 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useEffect, useState } from "react"
-import { Eye, EyeOff, Mail, Lock, Building, AlertCircle } from "lucide-react"
-import { supabase } from "@/lib/supabaseClient"
-import type { User as SupabaseUser } from "@supabase/supabase-js"
+import type React from "react";
+import { useEffect, useState } from "react";
+import { Eye, EyeOff, Mail, Lock, Building, AlertCircle } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 
-export type UserRole = "admin" | "auctioneer" | "organization"
+export type UserRole = "admin" | "seller" | "both";
 
 export interface UserType {
-  id: string
-  email: string
-  name: string
-  role: UserRole
-  organization?: string
-  avatar?: string
-  isVerified: boolean
-  createdAt: string
-  lastLogin?: string
+  id: string;
+  email: string;
+  fname: string;
+  lname: string;
+  role: UserRole;
+  organization?: string;
+  avatar?: string;
+  isVerified: boolean;
+  createdAt: string;
+  lastLogin?: string;
 }
 
 interface LoginFormProps {
-  onLogin: (user: UserType) => void
-  onSwitchToRegister: () => void
+  onLogin: (user: UserType) => void;
+  onSwitchToRegister: () => void;
 }
 
 export default function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProps) {
-  const [formData, setFormData] = useState({ email: "", password: "" })
-  const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState("")
-  const [user, setUser] = useState<UserType | null>(null)
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [user, setUser] = useState<UserType | null>(null);
 
   // Load user from localStorage on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem("auction_user")
-    if (storedUser) setUser(JSON.parse(storedUser))
-  }, [])
+    const storedUser = localStorage.getItem("auction_user");
+    if (storedUser) setUser(JSON.parse(storedUser));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setIsLoading(true)
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
 
     // Supabase sign in
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
       email: formData.email,
       password: formData.password,
-    })
+    });
 
-    if (error) {
-      setError(error.message)
-      setIsLoading(false)
-      return
+    if (authError) {
+      setError(authError.message);
+      setIsLoading(false);
+      return;
     }
-    const supaUser: SupabaseUser = data.user
-    const session = data.session
+
+    const supaUser: SupabaseUser = data.user;
+    const session = data.session;
 
     // Extract info from user_metadata
-    const meta = supaUser.user_metadata || {}
+    const meta = supaUser.user_metadata || {};
     let userTypeData: UserType = {
       id: supaUser.id,
       email: supaUser.email || meta.email || "",
-      name: meta.name || "",
-      role: (meta.role as UserRole) || "auctioneer",
+      fname: "",
+      lname: "",
+      role: (meta.role as UserRole) || "seller",
       organization: meta.organization || "",
       avatar: meta.avatar || "",
       isVerified: !!supaUser.email_confirmed_at,
       createdAt: supaUser.created_at,
       lastLogin: new Date().toISOString(),
+    };
+
+    // Fetch from profiles table for fname and lname
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("fname, lname")
+        .eq("id", supaUser.id)
+        .single();
+
+      if (profileError) throw profileError;
+      if (profile) {
+        userTypeData = {
+          ...userTypeData,
+          fname: profile.fname || "",
+          lname: profile.lname || "",
+        };
+      }
+    } catch (err) {
+      console.error("Profile fetch error:", err);
+      setError("Failed to load profile data.");
+      setIsLoading(false);
+      await supabase.auth.signOut();
+      return;
     }
-    
-    // // Optionally fetch from profiles table for more info
-    // try {
-    //   const { data: profile } = await supabase
-    //     .from("profiles")
-    //     .select("*")
-    //     .eq("id", supaUser.id)
-    //     .single()
-    //   if (profile) {
-    //     userType = {
-    //       ...userType,
-    //       name: profile.name || userType.name,
-    //       role: (profile.role as UserRole) || userType.role,
-    //       organization: profile.organization || userType.organization,
-    //       avatar: profile.avatar || userType.avatar,
-    //     }
-    //   }
-    // } catch {}
+
+    // Check if role is "seller" or "both"
+    const allowedRoles = ["seller", "both"];
+    if (!allowedRoles.includes(userTypeData.role.toLowerCase())) {
+      setError("Access denied. Only sellers or accounts with both roles can log in to this portal.");
+      setIsLoading(false);
+      await supabase.auth.signOut();
+      return;
+    }
 
     // Store in localStorage and state
-    localStorage.setItem("auction_user", JSON.stringify(userTypeData))
-    localStorage.setItem("auction_session", JSON.stringify(session))
-    setUser(userTypeData)
-    onLogin(userTypeData)
-    setIsLoading(false)
-  }
+    localStorage.setItem("auction_user", JSON.stringify(userTypeData));
+    localStorage.setItem("auction_session", JSON.stringify(session));
+    setUser(userTypeData);
+    onLogin(userTypeData);
+    setIsLoading(false);
+  };
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -184,62 +202,7 @@ export default function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProp
             )}
           </button>
         </form>
-{/* 
-        <div className="mt-6">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300 dark:border-gray-600" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">Demo Accounts</span>
-            </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => handleDemoLogin("admin")}
-              className="px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
-            >
-              Admin Demo
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDemoLogin("auctioneer")}
-              className="px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
-            >
-              Auctioneer Demo
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDemoLogin("organization")}
-              className="px-3 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
-            >
-              Organization Demo
-            </button>
-          </div>
-        </div> */}
-
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Don't have an account?{" "}
-            <button
-              type="button"
-              onClick={onSwitchToRegister}
-              className="font-medium text-corporate-600 dark:text-corporate-400 hover:text-corporate-500 dark:hover:text-corporate-300"
-            >
-              Sign up here
-            </button>
-          </p>
-        </div>
-
-        {/* <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-          <p className="text-xs text-blue-700 dark:text-blue-300">
-            <strong>Demo Credentials:</strong> Use any demo account above or email: any demo email, password:
-            password123
-          </p>
-        </div> */}
       </div>
     </div>
-  )
+  );
 }
