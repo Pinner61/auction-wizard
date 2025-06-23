@@ -100,7 +100,7 @@ export interface AuctionTemplate {
   isDefault?: boolean
 }
 
-export interface UploadedFile {
+export interface UploadedFile extends File {
   id: string
   name: string
   url: string
