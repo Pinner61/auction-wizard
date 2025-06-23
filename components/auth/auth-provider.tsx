@@ -3,14 +3,14 @@
 import type React from "react"
 
 import { createContext, useContext, useEffect, useState } from "react"
-import { User } from "./login-form"
+import { UserType } from "./login-form"
 
 interface AuthContextType {
-  user: User | null
+  user: UserType | null
   isLoading: boolean
-  login: (user: User) => void
+  login: (user: UserType) => void
   logout: () => void
-  updateUser: (user: User) => void
+  updateUser: (user: UserType) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -28,7 +28,7 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<UserType | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setIsLoading(false)
   }, [])
 
-  const login = (userData: User) => {
+  const login = (userData: UserType) => {
     setUser(userData)
     localStorage.setItem("auction_user", JSON.stringify(userData))
   }
@@ -51,7 +51,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     localStorage.removeItem("auction_session")
   }
 
-  const updateUser = (userData: User) => {
+  const updateUser = (userData: UserType) => {
     setUser(userData)
     localStorage.setItem("auction_user", JSON.stringify(user))
   }
