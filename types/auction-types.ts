@@ -100,7 +100,7 @@ export interface AuctionTemplate {
   isDefault?: boolean
 }
 
-export interface UploadedFile extends File {
+export type UploadedFile = {
   id: string
   name: string
   url: string
@@ -108,21 +108,19 @@ export interface UploadedFile extends File {
   type: string
   uploadedAt: string
 }
-
 export interface AuctionFormData {
   // Step 1: Auction Type
   auctionType: AuctionType
   auctionSubType: AuctionSubType
-  templateId?: string // If using a template
+  templateId?: string
 
-  // Step 2: Product/Lot Details (moved from step 3)
-  isMultiLot: boolean // Single lot or multiple lots
-  productName: string // Used for single lot
-  productDescription: string // Used for single lot
-  productImages: UploadedFile[] // Used for single lot
-  productDocuments: UploadedFile[] // Used for single lot
-  lots: LotItem[] // Used for multi-lot auctions
-  // New product classification fields
+  // Step 2: Product/Lot Details
+  isMultiLot: boolean
+  productName: string
+  productDescription: string
+  productImages: UploadedFile[] // Client-side state for rendering
+  productDocuments: UploadedFile[]
+  lots: LotItem[]
   categoryId: string
   subCategoryId?: string
   attributes: ProductAttribute[]
@@ -130,39 +128,36 @@ export interface AuctionFormData {
   brand?: string
   model?: string
 
-  // Step 3: Bidding Parameters (moved from step 2)
+  // Step 3: Bidding Parameters
   startPrice: number
   minimumIncrement: number
   auctionDuration: AuctionDuration
   currency: Currency
   launchType: LaunchType
-  scheduledStart: string // ISO string format
-  bidExtension: boolean // Enable bid extension to prevent sniping
-  bidExtensionTime: number // Minutes to extend auction if bid received in last X minutes
-  allowAutoBidding: boolean // Allow automated bidding
-  reservePrice?: number // Optional reserve price
-  // New bid increment flexibility
+  scheduledStart: string
+  bidExtension: boolean
+  bidExtensionTime: number
+  allowAutoBidding: boolean
+  reservePrice?: number
   bidIncrementType: BidIncrementType
   bidIncrementRules: BidIncrementRule[]
-  // Silent auction mode for forward auctions
   isSilentAuction: boolean
 
   // Step 4: Participation Rules
   participationType: ParticipationType
-  participantEmails: string[] // For invite-only
-  qualificationCriteria: QualificationCriteria[] // Requirements for participants
+  participantEmails: string[]
+  qualificationCriteria: QualificationCriteria[]
 
   // Step 5: Terms & Conditions
   termsAndConditions: TermsAndCondition[]
-  enableDispute: boolean // Enable dispute resolution
+  enableDispute: boolean
 
   // Additional Settings
   language: Language
   enableNotifications: boolean
-  notificationTypes: string[] // Email, SMS, Push
+  notificationTypes: string[]
   enableAnalytics: boolean
 }
-
 // New types for API authentication
 export interface ApiResponse<T = any> {
   success: boolean
