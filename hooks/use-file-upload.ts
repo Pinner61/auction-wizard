@@ -1,12 +1,25 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { uploadFile, deleteFile, type UploadedFile } from "@/actions/upload-actions"
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 interface UploadState {
   isUploading: boolean
   progress: number
   error: string | null
+}
+
+export type UploadedFile = {
+  id: string
+  name: string
+  url: string
+  size: number
+  type: string
+  uploadedAt: string
 }
 
 export function useFileUpload() {
@@ -29,33 +42,36 @@ export function useFileUpload() {
     const totalFiles = files.length
 
     try {
-      // Process files sequentially to show accurate progress
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
-        const formData = new FormData()
-        formData.append("file", file)
-
-        // Update progress based on files completed
         setUploadState((prev) => ({
           ...prev,
           progress: Math.round((i / totalFiles) * 100),
         }))
 
-        const result = await uploadFile(formData)
+        const fileName = `${Date.now()}_${file.name}`
+        const { data, error } = await supabase.storage
+          .from("auctions")
+          .upload(`public/${fileName}`, file, { upsert: true })
 
-        if ("error" in result) {
-          setUploadState({
-            isUploading: false,
-            progress: 0,
-            error: `Error uploading ${file.name}: ${result.error}`,
-          })
-          throw new Error(result.error)
+        if (error) {
+          throw new Error(`Error uploading ${file.name}: ${error.message}`)
         }
 
-        uploadedFiles.push(result)
+        const { data: urlData } = supabase.storage
+          .from('auctions')
+          .getPublicUrl(`public/${fileName}`)
+
+        uploadedFiles.push({
+          id: data.path,
+          name: file.name,
+          url: urlData.publicUrl,
+          size: file.size,
+          type: file.type,
+          uploadedAt: new Date().toISOString(),
+        })
       }
 
-      // All files uploaded successfully
       setUploadState({
         isUploading: false,
         progress: 100,
@@ -70,22 +86,16 @@ export function useFileUpload() {
         isUploading: false,
         error: error instanceof Error ? error.message : "Unknown upload error",
       }))
-      return uploadedFiles // Return any files that did upload successfully
+      return uploadedFiles
     }
   }, [])
 
   const removeFile = useCallback(async (fileId: string): Promise<boolean> => {
     try {
-      const result = await deleteFile(fileId)
-
-      if ("error" in result) {
-        setUploadState((prev) => ({
-          ...prev,
-          error: result.error,
-        }))
-        return false
+      const { error } = await supabase.storage.from("auctions").remove([fileId])
+      if (error) {
+        throw new Error(error.message)
       }
-
       return true
     } catch (error) {
       console.error("Delete error:", error)
