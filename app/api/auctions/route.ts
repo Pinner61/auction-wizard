@@ -38,46 +38,13 @@ async function getAuctions(req: NextRequest, user: any): Promise<NextResponse> {
     const status = searchParams.get("status")
     const auctionType = searchParams.get("auctionType")
 
-    // Mock auction data - in production, this would query your database
-    // const mockAuctions = [
-    //   {
-    //     id: "auction-1",
-    //     title: "Vintage Rolex Watch",
-    //     description: "Rare vintage Rolex Submariner in excellent condition",
-    //     categoryId: "jewelry-watches-luxury",
-    //     auctionType: "forward",
-    //     auctionSubType: "english",
-    //     startPrice: 5000,
-    //     currentBid: 7500,
-    //     status: "active",
-    //     endTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-    //     createdBy: user.id,
-    //     participationType: "public",
-    //     isSilentAuction: false,
-    //   },
-    //   {
-    //     id: "auction-2",
-    //     title: "MacBook Pro 16-inch",
-    //     description: "Latest MacBook Pro with M3 chip",
-    //     categoryId: "electronics-laptops",
-    //     auctionType: "reverse",
-    //     auctionSubType: "sealed-bid",
-    //     startPrice: 2500,
-    //     currentBid: 2200,
-    //     status: "active",
-    //     endTime: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
-    //     createdBy: user.id,
-    //     participationType: "verified",
-    //     isSilentAuction: false,
-    //   },
-    // ]
-
     const { data, error } = await supabase
-    .from('auctions')
-    .select('*')
-    .order('createdat', { ascending: false })
+      .from('auctions')
+      .select('*')
+      .order('createdat', { ascending: false })
     if (error) return NextResponse.json({ success: false, error: error.message }, { status: 400 })
     const mockAuctions = data || []
+
     // Apply filters
     let filteredAuctions = mockAuctions
     
@@ -126,6 +93,7 @@ async function createAuction(req: NextRequest, user: any): Promise<NextResponse>
     const auctionData: AuctionFormData = await req.json()
     const { searchParams } = new URL(req.url)
     const createdBy = searchParams.get("user")
+
     // Validate required fields
     if (!auctionData.auctionType || !auctionData.auctionSubType) {
       return NextResponse.json({ success: false, error: "Auction type and subtype are required" }, { status: 400 })
@@ -154,10 +122,12 @@ async function createAuction(req: NextRequest, user: any): Promise<NextResponse>
     }
 
     // Generate auction ID
-    // const auctionId = `auction-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     const auctionId = randomUUID()
     
-    // Mock auction creation - in production, this would save to your database
+    // Extract only URLs from productImages
+    const productImageUrls = auctionData.productImages?.map((img) => img.url) || []
+
+    // Prepare auction data for insertion
     const newAuction = keysToLowerCase({
       id: auctionId,
       ...auctionData,
@@ -166,25 +136,22 @@ async function createAuction(req: NextRequest, user: any): Promise<NextResponse>
       currentBid: auctionData.startPrice,
       bidCount: 0,
       participants: [],
+      productimages: productImageUrls, // Save only URLs
+      productImages: undefined, // Remove the full object from the database
     })
 
-    // In production, you would:
-    // 1. Save auction to database
+    // Insert into Supabase
     const { data, error } = await supabase
       .from('auctions')
       .insert([newAuction])
       .select()
-    if (error){
-      
+    if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 400 })
     }
-    // 2. Upload files to S3
-    // 3. Send notifications if needed
-    // 4. Schedule auction start if it's a scheduled auction
-    
+
     const response: ApiResponse = {
       success: true,
-      data: { auction: newAuction },
+      data: { auction: data[0] },
       message: "Auction created successfully",
     }
 
