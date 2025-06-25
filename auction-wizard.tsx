@@ -369,91 +369,82 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
   }
 
   const handleLaunchAuction = async () => {
-    // Validate all steps before launching
-    let allValid = true
-    const allErrors: ValidationError[] = []
+  let allValid = true
+  const allErrors: ValidationError[] = []
 
-    // Step 1
-    const step1Validation = validateStep1(formData.auctionType, formData.auctionSubType)
-    if (!step1Validation.isValid) {
+  const step1Validation = validateStep1(formData.auctionType, formData.auctionSubType)
+  if (!step1Validation.isValid) {
+    allValid = false
+    allErrors.push(...step1Validation.errors)
+  }
+
+  const step2Validation = validateStep2(
+    formData.startPrice,
+    formData.minimumIncrement,
+    formData.auctionDuration.days,
+    formData.auctionDuration.hours,
+    formData.auctionDuration.minutes,
+    formData.launchType,
+    formData.scheduledStart,
+    formData.bidExtension,
+    formData.bidExtensionTime,
+  )
+  if (!step2Validation.isValid) {
+    allValid = false
+    allErrors.push(...step2Validation.errors)
+  }
+
+  if (formData.isMultiLot) {
+    if (formData.lots.length === 0) {
       allValid = false
-      allErrors.push(...step1Validation.errors)
-    }
-
-    // Step 2
-    const step2Validation = validateStep2(
-      formData.startPrice,
-      formData.minimumIncrement,
-      formData.auctionDuration.days,
-      formData.auctionDuration.hours,
-      formData.auctionDuration.minutes,
-      formData.launchType,
-      formData.scheduledStart,
-      formData.bidExtension,
-      formData.bidExtensionTime,
-    )
-    if (!step2Validation.isValid) {
-      allValid = false
-      allErrors.push(...step2Validation.errors)
-    }
-
-    // Step 3
-    if (formData.isMultiLot) {
-      if (formData.lots.length === 0) {
-        allValid = false
-        allErrors.push({ field: "lots", message: "Please add at least one lot" })
-      } else {
-        // Check each lot for validity
-        const invalidLots = formData.lots.filter(
-          (lot) => !lot.name || !lot.description || lot.startPrice <= 0 || lot.minimumIncrement <= 0,
-        )
-        if (invalidLots.length > 0) {
-          allValid = false
-          allErrors.push({ field: "lots", message: "Please complete all required fields for each lot" })
-        }
-      }
+      allErrors.push({ field: "lots", message: "Please add at least one lot" })
     } else {
-      const step3Validation = validateStep3(formData.productName, formData.productDescription)
-      if (!step3Validation.isValid) {
+      const invalidLots = formData.lots.filter(
+        (lot) => !lot.name || !lot.description || lot.startPrice <= 0 || lot.minimumIncrement <= 0,
+      )
+      if (invalidLots.length > 0) {
         allValid = false
-        allErrors.push(...step3Validation.errors)
+        allErrors.push({ field: "lots", message: "Please complete all required fields for each lot" })
       }
     }
-
-    // Step 4
-    const step4Validation = validateStep4(formData.participationType, formData.participantEmails)
-    if (!step4Validation.isValid) {
+  } else {
+    const step3Validation = validateStep3(formData.productName, formData.productDescription)
+    if (!step3Validation.isValid) {
       allValid = false
-      allErrors.push(...step4Validation.errors)
+      allErrors.push(...step3Validation.errors)
     }
+  }
 
-    // Step 5
-    const step5Validation = validateStep5(formData.termsAndConditions)
-    if (!step5Validation.isValid) {
-      allValid = false
-      allErrors.push(...step5Validation.errors)
-    }
+  const step4Validation = validateStep4(formData.participationType, formData.participantEmails)
+  if (!step4Validation.isValid) {
+    allValid = false
+    allErrors.push(...step4Validation.errors)
+  }
 
-    if (!allValid) {
-      setValidationErrors(allErrors)
-      setShowValidationErrors(true)
-      alert("Please fix all validation errors before launching the auction.")
-      return
-    }
+  const step5Validation = validateStep5(formData.termsAndConditions)
+  if (!step5Validation.isValid) {
+    allValid = false
+    allErrors.push(...step5Validation.errors)
+  }
 
-  // In a real app, this would submit the form to the backend
+  if (!allValid) {
+    setValidationErrors(allErrors)
+    setShowValidationErrors(true)
+    alert("Please fix all validation errors before launching the auction.")
+    return
+  }
+
   try {
-    // POST to backend
     const formDataToSend = {
       ...formData,
-      createdby: user.email
+      createdby: user.email,
+      productimages: formData.productImages.map((img) => img.url), // Save only URLs
     }
 
     const res = await fetch(`/api/auctions?user=${encodeURIComponent(user?.email)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(formDataToSend),
-
     })
     const result = await res.json()
     
@@ -466,9 +457,8 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
     alert("Failed to create auction. Please try again.")
   }
 
-    setIsLaunched(true)
-  }
-
+  setIsLaunched(true)
+}
   const handleGoToDashboard = () => {
     // In a real app, this would navigate to the dashboard
     alert("Navigating to dashboard...")
@@ -479,38 +469,13 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
 
   // Handler for uploaded images
 // Handler for uploaded images
-const handleImagesUploaded = async (newImages: UploadedFile[]) => {
-  const uploadedFiles = await Promise.all(
-    newImages.map(async (file) => {
-      const fileName = `${Date.now()}_${file.name}`;
-      const { data, error: uploadError } = await supabase.storage
-        .from("auctions")
-        .upload(`public/${fileName}`, file, { upsert: true });
-
-      if (uploadError) {
-        console.error('Error uploading image:', uploadError);
-        return file; // Return original file if upload fails
-      }
-
-      // Get the public URL of the uploaded file
-      const { data: urlData } = supabase.storage
-        .from('auctions')
-        .getPublicUrl(`public/${fileName}`);
-
-      return {
-        ...file,
-        url: urlData.publicUrl, // Store the public URL
-        id: data.path, // Use the path as a unique ID
-      };
-    })
-  );
-
-  setFormData({
-    ...formData,
-    productImages: [...formData.productImages, ...uploadedFiles],
-  });
-};
-
+const handleImagesUploaded = (newImages: UploadedFile[]) => {
+    console.log("New images:", newImages); // Debug
+    setFormData({
+      ...formData,
+      productImages: [...formData.productImages, ...newImages],
+    });
+  };
   // Handler for uploaded documents
   const handleDocumentsUploaded = (newDocuments: UploadedFile[]) => {
     setFormData({
@@ -1530,12 +1495,10 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
                       </label>
                       <FileUploader
                         accept="image/*"
-                        maxFiles={10}
-                        maxSize={10 * 1024 * 1024} // 10MB
+                        type="image"
                         uploadedFiles={formData.productImages}
                         onFilesUploaded={handleImagesUploaded}
                         onFileRemoved={handleImageRemoved}
-                        type="image"
                       />
                     </div>
 
