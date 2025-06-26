@@ -20,9 +20,10 @@ export type UploadedFile = {
   size: number
   type: string
   uploadedAt: string
+  file: File
 }
 
-export function useFileUpload() {
+export function useFileUpload(folder: "public" | "documents" = "public") {
   const [uploadState, setUploadState] = useState<UploadState>({
     isUploading: false,
     progress: 0,
@@ -50,9 +51,10 @@ export function useFileUpload() {
         }))
 
         const fileName = `${Date.now()}_${file.name}`
+        const filePath = `${folder}/${fileName}`
         const { data, error } = await supabase.storage
           .from("auctions")
-          .upload(`public/${fileName}`, file, { upsert: true })
+          .upload(filePath, file, { upsert: true })
 
         if (error) {
           throw new Error(`Error uploading ${file.name}: ${error.message}`)
@@ -60,7 +62,7 @@ export function useFileUpload() {
 
         const { data: urlData } = supabase.storage
           .from('auctions')
-          .getPublicUrl(`public/${fileName}`)
+          .getPublicUrl(filePath)
 
         uploadedFiles.push({
           id: data.path,
@@ -69,6 +71,7 @@ export function useFileUpload() {
           size: file.size,
           type: file.type,
           uploadedAt: new Date().toISOString(),
+          file,
         })
       }
 
@@ -88,7 +91,7 @@ export function useFileUpload() {
       }))
       return uploadedFiles
     }
-  }, [])
+  }, [folder])
 
   const removeFile = useCallback(async (fileId: string): Promise<boolean> => {
     try {
