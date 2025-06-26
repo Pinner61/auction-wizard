@@ -14,12 +14,12 @@ import LanguageSelector from "./components/language-selector"
 import ApiKeySetup from "./components/api-key-setup"
 import { I18nProvider, useTranslation } from "./i18n/i18n-context"
 import type { AuctionFormData, AuctionTemplate, UploadedFile, Currency, Language } from "./types/auction-types"
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@supabase/supabase-js'
+import { useFileUpload } from "./hooks/use-file-upload" // Adjust path as needed
 // Initialize Supabase client
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
 import {
   validateStep1,
   validateStep2,
@@ -35,7 +35,6 @@ import { generateText } from "ai"
 import { openai } from "@ai-sdk/openai"
 import { PRODUCT_CATEGORIES } from "./data/product-categories"
 import { useAuth } from "@/components/auth/auth-provider"
-
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -101,7 +100,6 @@ const defaultFormData: AuctionFormData = {
   notificationTypes: ["email"],
   enableAnalytics: true,
 }
-
 
 interface AuctionWizardContentProps {
   language: Language
@@ -178,6 +176,21 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
   const scheduledDateRef = useRef<HTMLInputElement>(null)
   const scheduledTimeRef = useRef<HTMLInputElement>(null)
 
+  // File upload hooks
+  const {
+    uploadState: imageUploadState,
+    uploadFiles: uploadImages,
+    removeFile: removeImage,
+    resetUploadState: resetImageUpload,
+  } = useFileUpload("public");
+
+  const {
+    uploadState: documentUploadState,
+    uploadFiles: uploadDocuments,
+    removeFile: removeDocument,
+    resetUploadState: resetDocumentUpload,
+  } = useFileUpload("documents");
+
   // Handle API key setup
   const handleApiKeySet = (newApiKey: string) => {
     setApiKey(newApiKey)
@@ -205,8 +218,6 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
     })
     setShowTemplateSelector(false)
   }
-
-  // ... (keep all the existing validation, navigation, and handler functions exactly the same)
 
   // Validate current step
   const validateCurrentStep = (): boolean => {
@@ -369,13 +380,13 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
   }
 
   const handleLaunchAuction = async () => {
-  let allValid = true
-  const allErrors: ValidationError[] = []
+  let allValid = true;
+  const allErrors: ValidationError[] = [];
 
-  const step1Validation = validateStep1(formData.auctionType, formData.auctionSubType)
+  const step1Validation = validateStep1(formData.auctionType, formData.auctionSubType);
   if (!step1Validation.isValid) {
-    allValid = false
-    allErrors.push(...step1Validation.errors)
+    allValid = false;
+    allErrors.push(...step1Validation.errors);
   }
 
   const step2Validation = validateStep2(
@@ -388,77 +399,82 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
     formData.scheduledStart,
     formData.bidExtension,
     formData.bidExtensionTime,
-  )
+  );
   if (!step2Validation.isValid) {
-    allValid = false
-    allErrors.push(...step2Validation.errors)
+    allValid = false;
+    allErrors.push(...step2Validation.errors);
   }
 
   if (formData.isMultiLot) {
     if (formData.lots.length === 0) {
-      allValid = false
-      allErrors.push({ field: "lots", message: "Please add at least one lot" })
+      allValid = false;
+      allErrors.push({ field: "lots", message: "Please add at least one lot" });
     } else {
       const invalidLots = formData.lots.filter(
         (lot) => !lot.name || !lot.description || lot.startPrice <= 0 || lot.minimumIncrement <= 0,
-      )
+      );
       if (invalidLots.length > 0) {
-        allValid = false
-        allErrors.push({ field: "lots", message: "Please complete all required fields for each lot" })
+        allValid = false;
+        allErrors.push({ field: "lots", message: "Please complete all required fields for each lot" });
       }
     }
   } else {
-    const step3Validation = validateStep3(formData.productName, formData.productDescription)
+    const step3Validation = validateStep3(formData.productName, formData.productDescription);
     if (!step3Validation.isValid) {
-      allValid = false
-      allErrors.push(...step3Validation.errors)
+      allValid = false;
+      allErrors.push(...step3Validation.errors);
     }
   }
 
-  const step4Validation = validateStep4(formData.participationType, formData.participantEmails)
+  const step4Validation = validateStep4(formData.participationType, formData.participantEmails);
   if (!step4Validation.isValid) {
-    allValid = false
-    allErrors.push(...step4Validation.errors)
+    allValid = false;
+    allErrors.push(...step4Validation.errors);
   }
 
-  const step5Validation = validateStep5(formData.termsAndConditions)
+  const step5Validation = validateStep5(formData.termsAndConditions);
   if (!step5Validation.isValid) {
-    allValid = false
-    allErrors.push(...step5Validation.errors)
+    allValid = false;
+    allErrors.push(...step5Validation.errors);
   }
 
   if (!allValid) {
-    setValidationErrors(allErrors)
-    setShowValidationErrors(true)
-    alert("Please fix all validation errors before launching the auction.")
-    return
+    setValidationErrors(allErrors);
+    setShowValidationErrors(true);
+    alert("Please fix all validation errors before launching the auction.");
+    return;
   }
 
   try {
+    if (!user) {
+      alert("Please log in to launch the auction.");
+      return;
+    }
     const formDataToSend = {
       ...formData,
       createdby: user.email,
-      productimages: formData.productImages.map((img) => img.url), // Save only URLs
-    }
+      productimages: formData.productImages.map((img) => img.url),
+      productdocuments: formData.productDocuments.map((doc) => doc.url || ""),
+    };
 
-    const res = await fetch(`/api/auctions?user=${encodeURIComponent(user?.email)}`, {
+    const res = await fetch(`/api/auctions?user=${encodeURIComponent(user.email)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(formDataToSend),
-    })
-    const result = await res.json()
+    });
+    const result = await res.json();
     
     if (!result.success) {
-      alert(result.error || "Failed to create auction.")
-      return
+      alert(result.error || "Failed to create auction.");
+      return;
     }
-    setIsLaunched(true)
+    setIsLaunched(true);
   } catch (err) {
-    alert("Failed to create auction. Please try again.")
+    alert("Failed to create auction. Please try again.");
   }
 
-  setIsLaunched(true)
-}
+  setIsLaunched(true);
+};
   const handleGoToDashboard = () => {
     // In a real app, this would navigate to the dashboard
     alert("Navigating to dashboard...")
@@ -468,37 +484,64 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
   }
 
   // Handler for uploaded images
-// Handler for uploaded images
-const handleImagesUploaded = (newImages: UploadedFile[]) => {
-    console.log("New images:", newImages); // Debug
-    setFormData({
-      ...formData,
-      productImages: [...formData.productImages, ...newImages],
-    });
-  };
-  // Handler for uploaded documents
-  const handleDocumentsUploaded = (newDocuments: UploadedFile[]) => {
-    setFormData({
-      ...formData,
-      productDocuments: [...formData.productDocuments, ...newDocuments],
-    })
-  }
+  // Handler for uploaded images
+// In AuctionWizardContent
+// ... (previous imports and component setup remain the same)
+
+// ... (previous imports and component setup)
+
+const handleImagesUploaded = async (newImages: UploadedFile[]) => {
+  console.log("New images:", newImages); // Debug
+  const files = newImages.map((img) => img.file as unknown as File); // Safer cast via unknown
+  const uploadedFiles = await uploadImages(files);
+  setFormData({
+    ...formData,
+    productImages: [
+      ...formData.productImages,
+      ...uploadedFiles.map(file => ({
+        ...file,
+        url: file.url || "", // Ensure url is a string
+      } as const)), // Type assertion to enforce UploadedFile shape
+    ],
+  });
+};
+
+const handleDocumentsUploaded = async (newDocuments: UploadedFile[]) => {
+  const files = newDocuments.map((doc) => doc.file as unknown as File); // Safer cast via unknown
+  const uploadedFiles = await uploadDocuments(files);
+  setFormData({
+    ...formData,
+    productDocuments: [
+      ...formData.productDocuments,
+      ...uploadedFiles.map(file => ({
+        ...file,
+        url: file.url || "", // Ensure url is a string
+      } as const)), // Type assertion to enforce UploadedFile shape
+    ],
+  });
+};
+
+// ... (rest of the component)
+
+// ... (rest of the component remains the same)
 
   // Handler for removed images
-  const handleImageRemoved = (fileId: string) => {
+  const handleImageRemoved = async (fileId: string) => {
+    await removeImage(fileId);
     setFormData({
       ...formData,
       productImages: formData.productImages.filter((img) => img.id !== fileId),
-    })
-  }
+    });
+  };
 
   // Handler for removed documents
-  const handleDocumentRemoved = (fileId: string) => {
+  const handleDocumentRemoved = async (fileId: string) => {
+    await removeDocument(fileId);
     setFormData({
       ...formData,
       productDocuments: formData.productDocuments.filter((doc) => doc.id !== fileId),
-    })
-  }
+    });
+  };
 
   // Show confirmation modal before deleting a participant
   const confirmRemoveParticipant = (index: number) => {
@@ -622,6 +665,8 @@ const handleImagesUploaded = (newImages: UploadedFile[]) => {
       hour12: true,
     })
   }
+
+  // ... (AI Description Generation and remaining code would follow, but limited to 624 lines)
 
   // AI Description Generation
   const generateProductDescription = async () => {
@@ -1511,7 +1556,7 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
                         maxFiles={10}
                         maxSize={10 * 1024 * 1024} // 10MB
                         uploadedFiles={formData.productDocuments}
-                        onFilesUploaded={handleDocumentsUploaded}
+                        onFilesUploaded={handleDocumentsUploaded }
                         onFileRemoved={handleDocumentRemoved}
                         type="document"
                       />
