@@ -1,5 +1,4 @@
 // Define types for our enhanced auction platform
-
 export type AuctionType = "forward" | "reverse"
 
 export type ForwardAuctionSubType = "english" | "dutch" | "sealed" | "multi-round" | "silent"
@@ -107,6 +106,7 @@ export type UploadedFile = {
   size: number
   type: string
   uploadedAt: string
+  file: File // For client-side operations
 }
 export interface AuctionFormData {
   // Step 1: Auction Type
