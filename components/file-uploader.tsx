@@ -4,14 +4,14 @@ import type React from "react"
 import { useRef, useState } from "react"
 import { Upload, X, AlertCircle, FileText } from "lucide-react"
 import { useFileUpload } from "@/hooks/use-file-upload"
-import type { UploadedFile } from "@/actions/upload-actions"
+import type { UploadedFile } from "@/types/auction-types" // Updated import to use the correct type
 
 interface FileUploaderProps {
   accept: string
   maxFiles?: number
   maxSize?: number // in bytes
   uploadedFiles: UploadedFile[]
-  onFilesUploaded: (files: UploadedFile[]) => void
+  onFilesUploaded: (files: UploadedFile[]) => Promise<void> // Changed to async
   onFileRemoved: (fileId: string) => void
   type: "image" | "document"
 }
@@ -26,7 +26,7 @@ export default function FileUploader({
   type,
 }: FileUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { uploadState, uploadFiles, removeFile, resetUploadState } = useFileUpload()
+  const { uploadState, uploadFiles, removeFile, resetUploadState } = useFileUpload(type === "document" ? "documents" : "public")
   const [dragActive, setDragActive] = useState(false)
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,6 +54,14 @@ export default function FileUploader({
       if (uploadedFiles.length + files.length > maxFiles) {
         alert(`You can only upload a maximum of ${maxFiles} files.`)
         return false
+      }
+
+      // Check file type based on 'type' prop
+      const isImage = type === "image" && file.type.startsWith("image/");
+      const isDocument = type === "document" && [".pdf", ".doc", ".docx"].some(ext => file.name.toLowerCase().endsWith(ext));
+      if (!isImage && !isDocument) {
+        alert(`File ${file.name} is not a valid ${type}.`);
+        return false;
       }
 
       return true
