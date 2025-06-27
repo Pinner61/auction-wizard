@@ -1,25 +1,25 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useRef, useEffect } from "react"
-import { Inter } from "next/font/google"
-import { Clock, Users, CheckCircle, AlertCircle, Calendar } from "lucide-react"
-import FileUploader from "./components/file-uploader"
-import TemplateSelector from "./components/template-selector"
-import QualificationCriteriaManager from "./components/qualification-criteria"
-import TermsAndConditionsManager from "./components/terms-conditions"
-import LotManager from "./components/lot-manager"
-import LanguageSelector from "./components/language-selector"
-import ApiKeySetup from "./components/api-key-setup"
-import { I18nProvider, useTranslation } from "./i18n/i18n-context"
-import type { AuctionFormData, AuctionTemplate, UploadedFile, Currency, Language } from "./types/auction-types"
-import { createClient } from '@supabase/supabase-js'
-import { useFileUpload } from "./hooks/use-file-upload" // Adjust path as needed
+import { useState, useRef, useEffect } from "react";
+import { Inter } from "next/font/google";
+import { Clock, Users, CheckCircle, AlertCircle, Calendar } from "lucide-react";
+import FileUploader from "./components/file-uploader";
+import TemplateSelector from "./components/template-selector";
+import QualificationCriteriaManager from "./components/qualification-criteria";
+import TermsAndConditionsManager from "./components/terms-conditions";
+import LotManager from "./components/lot-manager";
+import LanguageSelector from "./components/language-selector";
+import ApiKeySetup from "./components/api-key-setup";
+import { I18nProvider, useTranslation } from "./i18n/i18n-context";
+import type { AuctionFormData, AuctionTemplate, UploadedFile, Currency, Language } from "./types/auction-types";
+import { createClient } from "@supabase/supabase-js";
+import { useFileUpload } from "./hooks/use-file-upload"; // Adjust path as needed
 // Initialize Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 import {
   validateStep1,
   validateStep2,
@@ -28,23 +28,23 @@ import {
   validateStep5,
   isValidEmail,
   type ValidationError,
-} from "./validation-utils"
-import ProductClassification from "./components/product-classification"
-import BidIncrementConfig from "./components/bid-increment-config"
-import { generateText } from "ai"
-import { openai } from "@ai-sdk/openai"
-import { PRODUCT_CATEGORIES } from "./data/product-categories"
-import { useAuth } from "@/components/auth/auth-provider"
+} from "./validation-utils";
+import ProductClassification from "./components/product-classification";
+import BidIncrementConfig from "./components/bid-increment-config";
+import { generateText } from "ai";
+import { openai } from "@ai-sdk/openai";
+import { PRODUCT_CATEGORIES } from "./data/product-categories";
+import { useAuth } from "@/components/auth/auth-provider";
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({ subsets: ["latin"] });
 
 // Type for deletion confirmation
-type DeletionType = "image" | "document" | "participant" | null
+type DeletionType = "image" | "document" | "participant" | null;
 
 interface DeletionInfo {
-  type: DeletionType
-  index: number
-  name: string
+  type: DeletionType;
+  index: number;
+  name: string;
 }
 
 // Default form data
@@ -70,6 +70,7 @@ const defaultFormData: AuctionFormData = {
   // Step 3: Bidding Parameters (moved from step 2)
   startPrice: 0,
   minimumIncrement: 0,
+  percent: null, // Added for percentage increment (e.g., 5 for 5%)
   auctionDuration: {
     days: 0,
     hours: 0,
@@ -99,82 +100,82 @@ const defaultFormData: AuctionFormData = {
   enableNotifications: true,
   notificationTypes: ["email"],
   enableAnalytics: true,
-}
+};
 
 interface AuctionWizardContentProps {
-  language: Language
-  onLanguageChange: (language: Language) => void
+  language: Language;
+  onLanguageChange: (language: Language) => void;
 }
 
 function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardContentProps) {
-  const { t } = useTranslation()
-  const [currentStep, setCurrentStep] = useState(1)
-  const [previousStep, setPreviousStep] = useState(1)
-  const [direction, setDirection] = useState<"forward" | "backward">("forward")
-  const [showTemplateSelector, setShowTemplateSelector] = useState(true)
+  const { t } = useTranslation();
+  const [currentStep, setCurrentStep] = useState(1);
+  const [previousStep, setPreviousStep] = useState(1);
+  const [direction, setDirection] = useState<"forward" | "backward">("forward");
+  const [showTemplateSelector, setShowTemplateSelector] = useState(true);
 
   const [formData, setFormData] = useState<AuctionFormData>({
     ...defaultFormData,
     language: language,
-  })
+  });
 
-  const { user, isLoading, login } = useAuth()    
+  const { user, isLoading, login } = useAuth();
 
   // API Key management
-  const [apiKey, setApiKey] = useState("")
-  const [showApiKeySetup, setShowApiKeySetup] = useState(false)
+  const [apiKey, setApiKey] = useState("");
+  const [showApiKeySetup, setShowApiKeySetup] = useState(false);
 
   // Load API key from localStorage on mount
   useEffect(() => {
-    const savedApiKey = localStorage.getItem("openai_api_key")
+    const savedApiKey = localStorage.getItem("openai_api_key");
     if (savedApiKey) {
-      setApiKey(savedApiKey)
+      setApiKey(savedApiKey);
     }
-  }, [])
+  }, []);
 
   // Update formData language when prop changes
   useEffect(() => {
-    setFormData((prev) => ({ ...prev, language }))
-  }, [language])
+    setFormData((prev) => ({ ...prev, language }));
+  }, [language]);
 
   // Validation state
-  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([])
-  const [showValidationErrors, setShowValidationErrors] = useState(false)
-  const [emailInput, setEmailInput] = useState("")
-  const [emailError, setEmailError] = useState("")
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
+  const [emailInput, setEmailInput] = useState("");
+  const [emailError, setEmailError] = useState("");
 
-  const [isLaunched, setIsLaunched] = useState(false)
+  const [isLaunched, setIsLaunched] = useState(false);
 
   // For file uploads
-  const imageInputRef = useRef<HTMLInputElement>(null)
-  const documentInputRef = useRef<HTMLInputElement>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
 
   // State for deletion confirmation modal
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletionInfo, setDeletionInfo] = useState<DeletionInfo>({
     type: null,
     index: -1,
     name: "",
-  })
+  });
 
   // Animation state
-  const [isAnimating, setIsAnimating] = useState(false)
+  const [isAnimating, setIsAnimating] = useState(false);
 
   // AI Description Generation state
-  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false)
-  const [aiGeneratedDescription, setAiGeneratedDescription] = useState("")
-  const [showAiSuggestion, setShowAiSuggestion] = useState(false)
-  const [hasUserSeenAiSuggestion, setHasUserSeenAiSuggestion] = useState(false)
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+  const [aiGeneratedDescription, setAiGeneratedDescription] = useState("");
+  const [showAiSuggestion, setShowAiSuggestion] = useState(false);
+  const [hasUserSeenAiSuggestion, setHasUserSeenAiSuggestion] = useState(false);
 
   // Refs for focusing first error field
-  const startPriceRef = useRef<HTMLInputElement>(null)
-  const minimumIncrementRef = useRef<HTMLInputElement>(null)
-  const daysRef = useRef<HTMLInputElement>(null)
-  const productNameRef = useRef<HTMLInputElement>(null)
-  const productDescriptionRef = useRef<HTMLTextAreaElement>(null)
-  const participantEmailRef = useRef<HTMLInputElement>(null)
-  const scheduledDateRef = useRef<HTMLInputElement>(null)
-  const scheduledTimeRef = useRef<HTMLInputElement>(null)
+  const startPriceRef = useRef<HTMLInputElement>(null);
+  const minimumIncrementRef = useRef<HTMLInputElement>(null);
+  const daysRef = useRef<HTMLInputElement>(null);
+  const productNameRef = useRef<HTMLInputElement>(null);
+  const productDescriptionRef = useRef<HTMLTextAreaElement>(null);
+  const participantEmailRef = useRef<HTMLInputElement>(null);
+  const scheduledDateRef = useRef<HTMLInputElement>(null);
+  const scheduledTimeRef = useRef<HTMLInputElement>(null);
 
   // File upload hooks
   const {
@@ -193,15 +194,15 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
 
   // Handle API key setup
   const handleApiKeySet = (newApiKey: string) => {
-    setApiKey(newApiKey)
-    setShowApiKeySetup(false)
-  }
+    setApiKey(newApiKey);
+    setShowApiKeySetup(false);
+  };
 
   // Handle language change
   const handleLanguageChange = (newLanguage: Language) => {
-    setFormData((prev) => ({ ...prev, language: newLanguage }))
-    onLanguageChange(newLanguage)
-  }
+    setFormData((prev) => ({ ...prev, language: newLanguage }));
+    onLanguageChange(newLanguage);
+  };
 
   // Handle template selection
   const handleSelectTemplate = (template: AuctionTemplate) => {
@@ -215,18 +216,18 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
       qualificationCriteria: template.qualificationCriteria,
       termsAndConditions: template.termsAndConditions,
       templateId: template.id,
-    })
-    setShowTemplateSelector(false)
-  }
+    });
+    setShowTemplateSelector(false);
+  };
 
   // Validate current step
   const validateCurrentStep = (): boolean => {
-    let stepValidation = { isValid: true, errors: [] as ValidationError[] }
+    let stepValidation = { isValid: true, errors: [] as ValidationError[] };
 
     switch (currentStep) {
       case 1:
-        stepValidation = validateStep1(formData.auctionType, formData.auctionSubType)
-        break
+        stepValidation = validateStep1(formData.auctionType, formData.auctionSubType);
+        break;
       case 2:
         // Step 2 is now Product Details
         if (formData.isMultiLot) {
@@ -235,31 +236,31 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
             stepValidation = {
               isValid: false,
               errors: [{ field: "lots", message: "Please add at least one lot" }],
-            }
+            };
           } else {
             // Check each lot for validity
             const invalidLots = formData.lots.filter(
-              (lot) => !lot.name || !lot.description || lot.startPrice <= 0 || lot.minimumIncrement <= 0,
-            )
+              (lot) => !lot.name || !lot.description || lot.startPrice <= 0 || lot.minimumIncrement <= 0
+            );
             if (invalidLots.length > 0) {
               stepValidation = {
                 isValid: false,
                 errors: [{ field: "lots", message: "Please complete all required fields for each lot" }],
-              }
+              };
             }
           }
         } else {
-          stepValidation = validateStep3(formData.productName, formData.productDescription)
+          stepValidation = validateStep3(formData.productName, formData.productDescription);
           // Also validate category selection
           if (!formData.categoryId) {
             stepValidation.errors.push({
               field: "categoryId",
               message: "Please select a product category",
-            })
-            stepValidation.isValid = false
+            });
+            stepValidation.isValid = false;
           }
         }
-        break
+        break;
       case 3:
         // Step 3 is now Bidding Parameters
         stepValidation = validateStep2(
@@ -271,241 +272,236 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
           formData.launchType,
           formData.scheduledStart,
           formData.bidExtension,
-          formData.bidExtensionTime,
-        )
-        break
+          formData.bidExtensionTime
+        );
+        break;
       case 4:
-        stepValidation = validateStep4(formData.participationType, formData.participantEmails)
-        break
+        stepValidation = validateStep4(formData.participationType, formData.participantEmails);
+        break;
       case 5:
-        stepValidation = validateStep5(formData.termsAndConditions)
-        break
+        stepValidation = validateStep5(formData.termsAndConditions);
+        break;
     }
 
-    setValidationErrors(stepValidation.errors)
-    setShowValidationErrors(!stepValidation.isValid)
+    setValidationErrors(stepValidation.errors);
+    setShowValidationErrors(!stepValidation.isValid);
 
     // Focus the first error field
     if (!stepValidation.isValid) {
-      focusFirstErrorField(stepValidation.errors[0].field)
+      focusFirstErrorField(stepValidation.errors[0].field);
     }
 
-    return stepValidation.isValid
-  }
+    return stepValidation.isValid;
+  };
 
   // Focus the first error field
   const focusFirstErrorField = (fieldName: string) => {
     setTimeout(() => {
       switch (fieldName) {
         case "startPrice":
-          startPriceRef.current?.focus()
-          break
+          startPriceRef.current?.focus();
+          break;
         case "minimumIncrement":
-          minimumIncrementRef.current?.focus()
-          break
+          minimumIncrementRef.current?.focus();
+          break;
         case "auctionDuration":
-          daysRef.current?.focus()
-          break
+          daysRef.current?.focus();
+          break;
         case "productName":
-          productNameRef.current?.focus()
-          break
+          productNameRef.current?.focus();
+          break;
         case "productDescription":
-          productDescriptionRef.current?.focus()
-          break
+          productDescriptionRef.current?.focus();
+          break;
         case "participantEmails":
-          participantEmailRef.current?.focus()
-          break
+          participantEmailRef.current?.focus();
+          break;
         case "scheduledStart":
-          scheduledDateRef.current?.focus()
-          break
+          scheduledDateRef.current?.focus();
+          break;
       }
-    }, 100)
-  }
+    }, 100);
+  };
 
   // Check if a field has an error
   const hasError = (fieldName: string): boolean => {
-    return validationErrors.some((error) => error.field === fieldName)
-  }
+    return validationErrors.some((error) => error.field === fieldName);
+  };
 
   // Get error message for a field
   const getErrorMessage = (fieldName: string): string => {
-    const error = validationErrors.find((error) => error.field === fieldName)
-    return error ? error.message : ""
-  }
+    const error = validationErrors.find((error) => error.field === fieldName);
+    return error ? error.message : "";
+  };
 
   // Clear validation errors when changing steps
   useEffect(() => {
-    setValidationErrors([])
-    setShowValidationErrors(false)
-  }, [currentStep])
+    setValidationErrors([]);
+    setShowValidationErrors(false);
+  }, [currentStep]);
 
   const handleNext = () => {
     if (currentStep < 6 && !isAnimating) {
       // Validate current step before proceeding
       if (!validateCurrentStep()) {
-        return
+        return;
       }
 
-      setIsAnimating(true)
-      setPreviousStep(currentStep)
-      setDirection("forward")
+      setIsAnimating(true);
+      setPreviousStep(currentStep);
+      setDirection("forward");
       setTimeout(() => {
-        setCurrentStep(currentStep + 1)
-        window.scrollTo(0, 0)
+        setCurrentStep(currentStep + 1);
+        window.scrollTo(0, 0);
         setTimeout(() => {
-          setIsAnimating(false)
-        }, 300)
-      }, 300)
+          setIsAnimating(false);
+        }, 300);
+      }, 300);
     }
-  }
+  };
 
   const handlePrevious = () => {
     if (currentStep > 1 && !isAnimating) {
-      setIsAnimating(true)
-      setPreviousStep(currentStep)
-      setDirection("backward")
+      setIsAnimating(true);
+      setPreviousStep(currentStep);
+      setDirection("backward");
       setTimeout(() => {
-        setCurrentStep(currentStep - 1)
-        window.scrollTo(0, 0)
+        setCurrentStep(currentStep - 1);
+        window.scrollTo(0, 0);
         setTimeout(() => {
-          setIsAnimating(false)
-        }, 300)
-      }, 300)
+          setIsAnimating(false);
+        }, 300);
+      }, 300);
     }
-  }
+  };
 
   const handleSaveDraft = () => {
     // In a real app, this would save to backend or localStorage
-    alert("Auction draft saved successfully!")
-  }
+    alert("Auction draft saved successfully!");
+  };
 
   const handleLaunchAuction = async () => {
-  let allValid = true;
-  const allErrors: ValidationError[] = [];
+    let allValid = true;
+    const allErrors: ValidationError[] = [];
 
-  const step1Validation = validateStep1(formData.auctionType, formData.auctionSubType);
-  if (!step1Validation.isValid) {
-    allValid = false;
-    allErrors.push(...step1Validation.errors);
-  }
-
-  const step2Validation = validateStep2(
-    formData.startPrice,
-    formData.minimumIncrement,
-    formData.auctionDuration.days,
-    formData.auctionDuration.hours,
-    formData.auctionDuration.minutes,
-    formData.launchType,
-    formData.scheduledStart,
-    formData.bidExtension,
-    formData.bidExtensionTime,
-  );
-  if (!step2Validation.isValid) {
-    allValid = false;
-    allErrors.push(...step2Validation.errors);
-  }
-
-  if (formData.isMultiLot) {
-    if (formData.lots.length === 0) {
+    const step1Validation = validateStep1(formData.auctionType, formData.auctionSubType);
+    if (!step1Validation.isValid) {
       allValid = false;
-      allErrors.push({ field: "lots", message: "Please add at least one lot" });
-    } else {
-      const invalidLots = formData.lots.filter(
-        (lot) => !lot.name || !lot.description || lot.startPrice <= 0 || lot.minimumIncrement <= 0,
-      );
-      if (invalidLots.length > 0) {
+      allErrors.push(...step1Validation.errors);
+    }
+
+    const step2Validation = validateStep2(
+      formData.startPrice,
+      formData.minimumIncrement,
+      formData.auctionDuration.days,
+      formData.auctionDuration.hours,
+      formData.auctionDuration.minutes,
+      formData.launchType,
+      formData.scheduledStart,
+      formData.bidExtension,
+      formData.bidExtensionTime
+    );
+    if (!step2Validation.isValid) {
+      allValid = false;
+      allErrors.push(...step2Validation.errors);
+    }
+
+    if (formData.isMultiLot) {
+      if (formData.lots.length === 0) {
         allValid = false;
-        allErrors.push({ field: "lots", message: "Please complete all required fields for each lot" });
+        allErrors.push({ field: "lots", message: "Please add at least one lot" });
+      } else {
+        const invalidLots = formData.lots.filter(
+          (lot) => !lot.name || !lot.description || lot.startPrice <= 0 || lot.minimumIncrement <= 0
+        );
+        if (invalidLots.length > 0) {
+          allValid = false;
+          allErrors.push({ field: "lots", message: "Please complete all required fields for each lot" });
+        }
+      }
+    } else {
+      const step3Validation = validateStep3(formData.productName, formData.productDescription);
+      if (!step3Validation.isValid) {
+        allValid = false;
+        allErrors.push(...step3Validation.errors);
       }
     }
-  } else {
-    const step3Validation = validateStep3(formData.productName, formData.productDescription);
-    if (!step3Validation.isValid) {
+
+    const step4Validation = validateStep4(formData.participationType, formData.participantEmails);
+    if (!step4Validation.isValid) {
       allValid = false;
-      allErrors.push(...step3Validation.errors);
+      allErrors.push(...step4Validation.errors);
     }
-  }
 
-  const step4Validation = validateStep4(formData.participationType, formData.participantEmails);
-  if (!step4Validation.isValid) {
-    allValid = false;
-    allErrors.push(...step4Validation.errors);
-  }
+    const step5Validation = validateStep5(formData.termsAndConditions);
+    if (!step5Validation.isValid) {
+      allValid = false;
+      allErrors.push(...step5Validation.errors);
+    }
 
-  const step5Validation = validateStep5(formData.termsAndConditions);
-  if (!step5Validation.isValid) {
-    allValid = false;
-    allErrors.push(...step5Validation.errors);
-  }
-
-  if (!allValid) {
-    setValidationErrors(allErrors);
-    setShowValidationErrors(true);
-    alert("Please fix all validation errors before launching the auction.");
-    return;
-  }
-
-  try {
-    if (!user) {
-      alert("Please log in to launch the auction.");
+    if (!allValid) {
+      setValidationErrors(allErrors);
+      setShowValidationErrors(true);
+      alert("Please fix all validation errors before launching the auction.");
       return;
     }
-    const formDataToSend = {
-      ...formData,
-      createdby: user.email,
-      productimages: formData.productImages.map((img) => img.url),
-      productdocuments: formData.productDocuments.map((doc) => doc.url || ""),
-    };
 
-    const res = await fetch(`/api/auctions?user=${encodeURIComponent(user.email)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formDataToSend),
-    });
-    const result = await res.json();
-    
-    if (!result.success) {
-      alert(result.error || "Failed to create auction.");
-      return;
+    try {
+      if (!user) {
+        alert("Please log in to launch the auction.");
+        return;
+      }
+      const formDataToSend = {
+        ...formData,
+        createdby: user.email,
+        productimages: formData.productImages.map((img) => img.url),
+        productdocuments: formData.productDocuments.map((doc) => doc.url || ""),
+        percent: formData.bidIncrementType === "percentage" ? formData.bidIncrementRules[0]?.incrementValue : null, // Set percent for percentage type
+        minimumIncrement: formData.bidIncrementType === "fixed" ? formData.bidIncrementRules[0]?.incrementValue : 0, // Set minimumIncrement for fixed type, 0 otherwise
+      };
+
+      const res = await fetch(`/api/auctions?user=${encodeURIComponent(user.email)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formDataToSend),
+      });
+      const result = await res.json();
+
+      if (!result.success) {
+        alert(result.error || "Failed to create auction.");
+        return;
+      }
+      setIsLaunched(true);
+    } catch (err) {
+      alert("Failed to create auction. Please try again.");
     }
+
     setIsLaunched(true);
-  } catch (err) {
-    alert("Failed to create auction. Please try again.");
-  }
-
-  setIsLaunched(true);
-};
+  };
   const handleGoToDashboard = () => {
     // In a real app, this would navigate to the dashboard
-    alert("Navigating to dashboard...")
+    alert("Navigating to dashboard...");
     // Reset the wizard state if needed
-    setIsLaunched(false)
-    setCurrentStep(1)
-  }
+    setIsLaunched(false);
+    setCurrentStep(1);
+  };
 
   // Handler for uploaded images
-  // Handler for uploaded images
-// In AuctionWizardContent
-// ... (previous imports and component setup remain the same)
-
-// ... (previous imports and component setup)
-
-const handleImagesUploaded = async (newImages: UploadedFile[]) => {
-  console.log("New images:", newImages); // Debug
-  const files = newImages.map((img) => img.file as unknown as File); // Safer cast via unknown
-  const uploadedFiles = await uploadImages(files);
-  setFormData({
-    ...formData,
-    productImages: [
-      ...formData.productImages,
-      ...uploadedFiles.map(file => ({
-        ...file,
-        url: file.url || "", // Ensure url is a string
-      } as const)), // Type assertion to enforce UploadedFile shape
-    ],
-  });
-};
-
+  const handleImagesUploaded = async (newImages: UploadedFile[]) => {
+    console.log("New images:", newImages); // Debug
+    const files = newImages.map((img) => img.file as unknown as File); // Safer cast via unknown
+    const uploadedFiles = await uploadImages(files);
+    setFormData({
+      ...formData,
+      productImages: [
+        ...formData.productImages,
+        ...uploadedFiles.map((file) => ({
+          ...file,
+          url: file.url || "", // Ensure url is a string
+        }) as const), // Type assertion to enforce UploadedFile shape
+      ],
+    });
+  };
 const handleDocumentsUploaded = async (newDocuments: UploadedFile[]) => {
   const files = newDocuments.map((doc) => doc.file as unknown as File); // Safer cast via unknown
   const uploadedFiles = await uploadDocuments(files);
@@ -1526,12 +1522,12 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
                       brand={formData.brand}
                       model={formData.model}
                       onCategoryChange={(categoryId, subCategoryId) =>
-                        setFormData({ ...formData, categoryId, subCategoryId })
+                        setFormData((prev) => ({ ...prev, categoryId, subCategoryId }))
                       }
-                      onAttributesChange={(attributes) => setFormData({ ...formData, attributes })}
-                      onSkuChange={(sku) => setFormData({ ...formData, sku })}
-                      onBrandChange={(brand) => setFormData({ ...formData, brand })}
-                      onModelChange={(model) => setFormData({ ...formData, model })}
+                      onAttributesChange={(attributes) => setFormData((prev) => ({ ...prev, attributes }))}
+                      onSkuChange={(sku) => setFormData((prev) => ({ ...prev, sku }))}
+                      onBrandChange={(brand) => setFormData((prev) => ({ ...prev, brand }))}
+                      onModelChange={(model) => setFormData((prev) => ({ ...prev, model }))}
                     />
 
                     <div>
@@ -1556,7 +1552,7 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
                         maxFiles={10}
                         maxSize={10 * 1024 * 1024} // 10MB
                         uploadedFiles={formData.productDocuments}
-                        onFilesUploaded={handleDocumentsUploaded }
+                        onFilesUploaded={handleDocumentsUploaded}
                         onFileRemoved={handleDocumentRemoved}
                         type="document"
                       />
@@ -1566,8 +1562,7 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
               </div>
             )}
 
-            {/* Continue with remaining steps... */}
-            {/* Step 3: Bidding Parameters (moved from step 2) */}
+            {/* Step 3: Bidding Parameters */}
             {currentStep === 3 && (
               <div className="space-y-6">
                 <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{t("biddingParameters")}</h2>
@@ -1598,10 +1593,10 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
                         placeholder="0.00"
                         value={formData.startPrice}
                         onChange={(e) =>
-                          setFormData({
-                            ...formData,
+                          setFormData((prev) => ({
+                            ...prev,
                             startPrice: Number.parseFloat(e.target.value) || 0,
-                          })
+                          }))
                         }
                       />
                       <div className="absolute inset-y-0 right-0 flex items-center">
@@ -1611,10 +1606,10 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
                           className="form-select h-full py-0 pl-2 pr-7 border-transparent bg-transparent text-gray-500 dark:text-gray-400 sm:text-sm rounded-md"
                           value={formData.currency}
                           onChange={(e) =>
-                            setFormData({
-                              ...formData,
+                            setFormData((prev) => ({
+                              ...prev,
                               currency: e.target.value as Currency,
-                            })
+                            }))
                           }
                         >
                           <option value="USD">USD</option>
@@ -1656,10 +1651,10 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
                         placeholder="0.00"
                         value={formData.minimumIncrement}
                         onChange={(e) =>
-                          setFormData({
-                            ...formData,
+                          setFormData((prev) => ({
+                            ...prev,
                             minimumIncrement: Number.parseFloat(e.target.value) || 0,
-                          })
+                          }))
                         }
                       />
                     </div>
@@ -1669,15 +1664,54 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
 
                 {/* Bid Increment Configuration */}
                 <BidIncrementConfig
-                  bidIncrementType={formData.bidIncrementType}
-                  bidIncrementRules={formData.bidIncrementRules}
-                  currency={formData.currency}
-                  onIncrementTypeChange={(type) => setFormData({ ...formData, bidIncrementType: type })}
-                  onRulesChange={(rules) => setFormData({ ...formData, bidIncrementRules: rules })}
-                />
-
-                {/* Rest of the bidding parameters content... */}
-                {/* (Include all the existing auction duration, anti-sniping, auto-bidding, reserve price, and scheduled auction sections) */}
+  bidIncrementType={formData.bidIncrementType}
+  bidIncrementRules={formData.bidIncrementRules}
+  currency={formData.currency}
+  onIncrementTypeChange={(type) =>
+    setFormData((prev) => {
+      let updatedMinimumIncrement = prev.minimumIncrement;
+      let updatedPercent = prev.percent;
+      if (type === "percentage") {
+        updatedPercent = prev.bidIncrementRules[0]?.incrementValue || 5; // Default to 5%
+        // Preserve minimumIncrement unless it’s 0 or unchanged
+        if (prev.minimumIncrement === 0 || prev.bidIncrementType !== "fixed") {
+          updatedMinimumIncrement = 1;
+        }
+      } else if (type === "fixed") {
+        updatedMinimumIncrement = prev.bidIncrementRules[0]?.incrementValue || 0;
+        updatedPercent = null;
+      }
+      return {
+        ...prev,
+        bidIncrementType: type,
+        minimumIncrement: updatedMinimumIncrement,
+        percent: updatedPercent,
+      };
+    })
+  }
+  onRulesChange={(rules) =>
+    setFormData((prev) => {
+      let updatedMinimumIncrement = prev.minimumIncrement;
+      let updatedPercent = prev.percent;
+      if (prev.bidIncrementType === "percentage" && rules[0]?.incrementValue) {
+        updatedPercent = rules[0].incrementValue; // Update percent
+        // Preserve minimumIncrement unless it was 0 or type changed
+        if (prev.minimumIncrement === 0 || prev.bidIncrementType !== "fixed") {
+          updatedMinimumIncrement = 1;
+        }
+      } else if (prev.bidIncrementType === "fixed" && rules[0]?.incrementValue) {
+        updatedMinimumIncrement = rules[0].incrementValue;
+        updatedPercent = null;
+      }
+      return {
+        ...prev,
+        bidIncrementRules: rules,
+        minimumIncrement: updatedMinimumIncrement,
+        percent: updatedPercent,
+      };
+    })
+  }
+/>
 
                 <div className="space-y-4">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -1703,13 +1737,13 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
                         className="form-input"
                         value={formData.auctionDuration.days}
                         onChange={(e) =>
-                          setFormData({
-                            ...formData,
+                          setFormData((prev) => ({
+                            ...prev,
                             auctionDuration: {
-                              ...formData.auctionDuration,
+                              ...prev.auctionDuration,
                               days: Number.parseInt(e.target.value) || 0,
                             },
-                          })
+                          }))
                         }
                       />
                     </div>
@@ -1726,13 +1760,13 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
                         className="form-input"
                         value={formData.auctionDuration.hours}
                         onChange={(e) =>
-                          setFormData({
-                            ...formData,
+                          setFormData((prev) => ({
+                            ...prev,
                             auctionDuration: {
-                              ...formData.auctionDuration,
+                              ...prev.auctionDuration,
                               hours: Number.parseInt(e.target.value) || 0,
                             },
-                          })
+                          }))
                         }
                       />
                     </div>
@@ -1749,13 +1783,13 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
                         className="form-input"
                         value={formData.auctionDuration.minutes}
                         onChange={(e) =>
-                          setFormData({
-                            ...formData,
+                          setFormData((prev) => ({
+                            ...prev,
                             auctionDuration: {
-                              ...formData.auctionDuration,
+                              ...prev.auctionDuration,
                               minutes: Number.parseInt(e.target.value) || 0,
                             },
-                          })
+                          }))
                         }
                       />
                     </div>
@@ -1784,10 +1818,10 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
                       className="form-checkbox"
                       checked={formData.bidExtension}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
+                        setFormData((prev) => ({
+                          ...prev,
                           bidExtension: e.target.checked,
-                        })
+                        }))
                       }
                     />
                     <label htmlFor="bidExtension" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
@@ -1809,10 +1843,10 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
                           className="form-input w-20"
                           value={formData.bidExtensionTime}
                           onChange={(e) =>
-                            setFormData({
-                              ...formData,
+                            setFormData((prev) => ({
+                              ...prev,
                               bidExtensionTime: Number.parseInt(e.target.value) || 5,
-                            })
+                            }))
                           }
                         />
                         <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{t("minutes")}</span>
@@ -1834,10 +1868,10 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
                       className="form-checkbox"
                       checked={formData.allowAutoBidding}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
+                        setFormData((prev) => ({
+                          ...prev,
                           allowAutoBidding: e.target.checked,
-                        })
+                        }))
                       }
                     />
                     <label htmlFor="allowAutoBidding" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
@@ -1859,10 +1893,10 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
                       className="form-checkbox"
                       checked={formData.reservePrice !== undefined}
                       onChange={(e) =>
-                        setFormData({
-                          ...formData,
+                        setFormData((prev) => ({
+                          ...prev,
                           reservePrice: e.target.checked ? 0 : undefined,
-                        })
+                        }))
                       }
                     />
                     <label htmlFor="enableReservePrice" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
@@ -1888,10 +1922,10 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
                           placeholder="0.00"
                           value={formData.reservePrice}
                           onChange={(e) =>
-                            setFormData({
-                              ...formData,
+                            setFormData((prev) => ({
+                              ...prev,
                               reservePrice: Number.parseFloat(e.target.value) || 0,
-                            })
+                            }))
                           }
                         />
                       </div>
@@ -1907,13 +1941,12 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
                   </label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div
-                      className={`border rounded-lg p-4 cursor-pointer transition-all-smooth hover-scale 
-                        ${
-                          formData.launchType === "immediate"
-                            ? "border-corporate-500 bg-corporate-50 dark:border-corporate-400 dark:bg-corporate-900/30"
-                            : "border-gray-200 hover:border-corporate-200 dark:border-gray-700 dark:hover:border-corporate-700"
-                        }`}
-                      onClick={() => setFormData({ ...formData, launchType: "immediate" })}
+                      className={`border rounded-lg p-4 cursor-pointer transition-all-smooth hover:scale-105 ${
+                        formData.launchType === "immediate"
+                          ? "border-corporate-500 bg-corporate-50 dark:border-corporate-400 dark:bg-corporate-900/30"
+                          : "border-gray-200 hover:border-corporate-200 dark:border-gray-700 dark:hover:border-corporate-700"
+                      }`}
+                      onClick={() => setFormData((prev) => ({ ...prev, launchType: "immediate" }))}
                     >
                       <div className="flex items-center justify-between">
                         <div>
@@ -1933,13 +1966,12 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
                     </div>
 
                     <div
-                      className={`border rounded-lg p-4 cursor-pointer transition-all-smooth hover-scale 
-                        ${
-                          formData.launchType === "scheduled"
-                            ? "border-corporate-500 bg-corporate-50 dark:border-corporate-400 dark:bg-corporate-900/30"
-                            : "border-gray-200 hover:border-corporate-200 dark:border-gray-700 dark:hover:border-corporate-700"
-                        }`}
-                      onClick={() => setFormData({ ...formData, launchType: "scheduled" })}
+                      className={`border rounded-lg p-4 cursor-pointer transition-all-smooth hover:scale-105 ${
+                        formData.launchType === "scheduled"
+                          ? "border-corporate-500 bg-corporate-50 dark:border-corporate-400 dark:bg-corporate-900/30"
+                          : "border-gray-200 hover:border-corporate-200 dark:border-gray-700 dark:hover:border-corporate-700"
+                      }`}
+                      onClick={() => setFormData((prev) => ({ ...prev, launchType: "scheduled" }))}
                     >
                       <div className="flex items-center justify-between">
                         <div>
@@ -2010,7 +2042,7 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
                                   : ""
                               }`}
                               value={formatTimeForInput(formData.scheduledStart)}
-                              onChange={handleScheduledTimeChange}
+                              onChange={handleScheduledDateChange}
                             />
                           </div>
                         </div>
