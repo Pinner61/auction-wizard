@@ -1,15 +1,15 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Plus, Trash2, Info } from "lucide-react"
-import type { BidIncrementType, BidIncrementRule, Currency } from "@/types/auction-types"
+import { useState } from "react";
+import { Plus, Trash2, Info } from "lucide-react";
+import type { BidIncrementType, BidIncrementRule, Currency } from "@/types/auction-types";
 
 interface BidIncrementConfigProps {
-  bidIncrementType: BidIncrementType
-  bidIncrementRules: BidIncrementRule[]
-  currency: Currency
-  onIncrementTypeChange: (type: BidIncrementType) => void
-  onRulesChange: (rules: BidIncrementRule[]) => void
+  bidIncrementType: BidIncrementType;
+  bidIncrementRules: BidIncrementRule[];
+  currency: Currency;
+  onIncrementTypeChange: (type: BidIncrementType) => void;
+  onRulesChange: (rules: BidIncrementRule[]) => void;
 }
 
 export default function BidIncrementConfig({
@@ -19,36 +19,36 @@ export default function BidIncrementConfig({
   onIncrementTypeChange,
   onRulesChange,
 }: BidIncrementConfigProps) {
-  const [showAddRule, setShowAddRule] = useState(false)
+  const [showAddRule, setShowAddRule] = useState(false);
   const [newRule, setNewRule] = useState<Partial<BidIncrementRule>>({
     minBidAmount: 0,
     maxBidAmount: undefined,
     incrementValue: 0,
     incrementType: bidIncrementType,
-  })
+  });
 
   const getCurrencySymbol = (currency: Currency) => {
     switch (currency) {
       case "USD":
-        return "$"
+        return "$";
       case "EUR":
-        return "€"
+        return "€";
       case "GBP":
-        return "£"
+        return "£";
       case "JPY":
-        return "¥"
+        return "¥";
       case "INR":
-        return "₹"
+        return "₹";
       case "AUD":
-        return "A$"
+        return "A$";
       case "CAD":
-        return "C$"
+        return "C$";
       case "CNY":
-        return "¥"
+        return "¥";
       default:
-        return "$"
+        return "$";
     }
-  }
+  };
 
   const handleAddRule = () => {
     if (newRule.minBidAmount !== undefined && newRule.incrementValue !== undefined) {
@@ -58,48 +58,50 @@ export default function BidIncrementConfig({
         maxBidAmount: newRule.maxBidAmount,
         incrementValue: newRule.incrementValue,
         incrementType: bidIncrementType,
-      }
+      };
 
-      const updatedRules = [...bidIncrementRules, rule].sort((a, b) => a.minBidAmount - b.minBidAmount)
-      onRulesChange(updatedRules)
+      const updatedRules = [...bidIncrementRules, rule].sort((a, b) => a.minBidAmount - b.minBidAmount);
+      onRulesChange(updatedRules);
 
       setNewRule({
         minBidAmount: 0,
         maxBidAmount: undefined,
         incrementValue: 0,
         incrementType: bidIncrementType,
-      })
-      setShowAddRule(false)
+      });
+      setShowAddRule(false);
     }
-  }
+  };
 
   const handleRemoveRule = (ruleId: string) => {
-    const updatedRules = bidIncrementRules.filter((rule) => rule.id !== ruleId)
-    onRulesChange(updatedRules)
-  }
+    const updatedRules = bidIncrementRules.filter((rule) => rule.id !== ruleId);
+    onRulesChange(updatedRules);
+  };
 
   const handleUpdateRule = (ruleId: string, field: keyof BidIncrementRule, value: any) => {
-    const updatedRules = bidIncrementRules.map((rule) => (rule.id === ruleId ? { ...rule, [field]: value } : rule))
-    onRulesChange(updatedRules)
-  }
+    const updatedRules = bidIncrementRules.map((rule) =>
+      rule.id === ruleId ? { ...rule, [field]: value } : rule
+    );
+    onRulesChange(updatedRules);
+  };
 
   const getIncrementTypeDescription = (type: BidIncrementType) => {
     switch (type) {
       case "fixed":
-        return "Bidders must increase bids by a fixed amount"
+        return "Bidders must increase bids by a fixed amount";
       case "percentage":
-        return "Bidders must increase bids by a percentage of current bid"
+        return "Bidders must increase bids by a percentage of current bid";
       case "range-based":
-        return "Different increment rules apply based on bid amount ranges"
+        return "Different increment rules apply based on bid amount ranges";
     }
-  }
+  };
 
   const formatIncrementValue = (value: number, type: BidIncrementType) => {
     if (type === "percentage") {
-      return `${value}%`
+      return `${value}%`;
     }
-    return `${getCurrencySymbol(currency)}${value}`
-  }
+    return `${getCurrencySymbol(currency)}${value}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -151,20 +153,25 @@ export default function BidIncrementConfig({
                 </div>
                 <input
                   type="number"
-                  min="0"
+                  min="0.01"
                   step="0.01"
                   className="form-input pl-7"
-                  value={bidIncrementRules[0]?.incrementValue || 0}
+                  value={bidIncrementRules[0]?.incrementValue || ""}
                   onChange={(e) => {
-                    const value = Number.parseFloat(e.target.value) || 0
-                    const rule: BidIncrementRule = {
-                      id: "fixed-rule",
-                      minBidAmount: 0,
-                      incrementValue: value,
-                      incrementType: "fixed",
+                    const value = Number.parseFloat(e.target.value) || 0;
+                    if (value > 0) {
+                      const rule: BidIncrementRule = {
+                        id: "fixed-rule",
+                        minBidAmount: 0,
+                        incrementValue: value,
+                        incrementType: "fixed",
+                      };
+                      onRulesChange([rule]);
+                    } else {
+                      alert("Increment amount must be greater than 0.");
                     }
-                    onRulesChange([rule])
                   }}
+                  required
                 />
               </div>
             </div>
@@ -178,31 +185,47 @@ export default function BidIncrementConfig({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Increment Percentage
+                Increment Percentage <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <input
                   type="number"
-                  min="0"
+                  min="0.1"
                   max="100"
                   step="0.1"
-                  className="form-input pr-8"
-                  value={bidIncrementRules[0]?.incrementValue || 0}
+                  className={`form-input pr-8 ${
+                    !bidIncrementRules[0]?.incrementValue ||
+                    bidIncrementRules[0].incrementValue < 0.1 ||
+                    bidIncrementRules[0].incrementValue > 100
+                      ? "border-red-500"
+                      : ""
+                  }`}
+                  value={bidIncrementRules[0]?.incrementValue || ""}
                   onChange={(e) => {
-                    const value = Number.parseFloat(e.target.value) || 0
-                    const rule: BidIncrementRule = {
-                      id: "percentage-rule",
-                      minBidAmount: 0,
-                      incrementValue: value,
-                      incrementType: "percentage",
+                    const value = Number.parseFloat(e.target.value) || 0;
+                    if (value >= 0.1 && value <= 100) {
+                      const rule: BidIncrementRule = {
+                        id: "percentage-rule",
+                        minBidAmount: 0,
+                        incrementValue: value,
+                        incrementType: "percentage",
+                      };
+                      onRulesChange([rule]);
+                    } else {
+                      alert("Increment percentage must be between 0.1% and 100%.");
                     }
-                    onRulesChange([rule])
                   }}
+                  required
                 />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                   <span className="text-gray-500 dark:text-gray-400 sm:text-sm">%</span>
                 </div>
               </div>
+              {!bidIncrementRules[0]?.incrementValue ||
+              bidIncrementRules[0].incrementValue < 0.1 ||
+              bidIncrementRules[0].incrementValue > 100 ? (
+                <p className="text-xs text-red-500 mt-1">Percentage is required and must be between 0.1% and 100%.</p>
+              ) : null}
             </div>
           </div>
           <div className="mt-3 flex items-start">
@@ -286,7 +309,7 @@ export default function BidIncrementConfig({
                             handleUpdateRule(
                               rule.id,
                               "maxBidAmount",
-                              e.target.value ? Number.parseFloat(e.target.value) : undefined,
+                              e.target.value ? Number.parseFloat(e.target.value) : undefined
                             )
                           }
                         />
@@ -351,7 +374,9 @@ export default function BidIncrementConfig({
                       step="0.01"
                       className="form-input pl-7"
                       value={newRule.minBidAmount || 0}
-                      onChange={(e) => setNewRule({ ...newRule, minBidAmount: Number.parseFloat(e.target.value) || 0 })}
+                      onChange={(e) =>
+                        setNewRule({ ...newRule, minBidAmount: Number.parseFloat(e.target.value) || 0 })
+                      }
                     />
                   </div>
                 </div>
@@ -438,5 +463,5 @@ export default function BidIncrementConfig({
         </div>
       </div>
     </div>
-  )
+  );
 }
