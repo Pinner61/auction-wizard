@@ -142,6 +142,7 @@ export interface AuctionFormData {
   bidIncrementType: BidIncrementType
   bidIncrementRules: BidIncrementRule[]
   isSilentAuction: boolean
+  percent ?: number | null // For silent auctions, percentage of the start price
 
   // Step 4: Participation Rules
   participationType: ParticipationType
