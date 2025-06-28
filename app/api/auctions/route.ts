@@ -113,6 +113,36 @@ async function createAuction(req: NextRequest, user: any): Promise<NextResponse>
       );
     }
 
+    // Validate reverse auction-specific fields
+    if (auctionData.auctionType === "reverse") {
+      if (typeof auctionData.targetprice !== "number" || auctionData.targetprice <= 0) {
+        return NextResponse.json(
+          { success: false, error: "Target price is required and must be a positive number for reverse auctions" },
+          { status: 400 }
+        );
+      }
+      if (!auctionData.requireddocuments || typeof auctionData.requireddocuments !== "string") {
+        return NextResponse.json(
+          { success: false, error: "Required documents must be provided as a JSON string for reverse auctions" },
+          { status: 400 }
+        );
+      }
+      try {
+        const docs = JSON.parse(auctionData.requireddocuments);
+        if (!Array.isArray(docs) || !docs.every(doc => typeof doc === "object" && doc.name)) {
+          return NextResponse.json(
+            { success: false, error: "Required documents must be a valid JSON array of objects with a 'name' field" },
+            { status: 400 }
+          );
+        }
+      } catch (e) {
+        return NextResponse.json(
+          { success: false, error: "Invalid JSON format for required documents" },
+          { status: 400 }
+        );
+      }
+    }
+
     // Validate bid increment rules
     if (auctionData.bidIncrementType === "range-based" && auctionData.bidIncrementRules.length === 0) {
       return NextResponse.json(
@@ -152,13 +182,16 @@ async function createAuction(req: NextRequest, user: any): Promise<NextResponse>
       ...auctionData,
       createdAt: new Date().toISOString(),
       status: auctionData.launchType === "immediate" ? "active" : "scheduled",
-      currentBid: auctionData.startPrice,
+      currentBid: auctionData.auctionType === "reverse" ? auctionData.targetprice : auctionData.startPrice, // For reverse, start at targetprice
       bidCount: 0,
       participants: [],
-      productimages: productImageUrls, // Save only URLs
-      productImages: undefined, // Remove the full object from the database
-      percent: auctionData.bidIncrementType === "percentage" ? auctionData.bidIncrementRules[0]?.incrementValue : null, // Store percentage (e.g., 5 for 5%)
-      minimumincrement: auctionData.bidIncrementType === "fixed" ? auctionData.bidIncrementRules[0]?.incrementValue : 0, // Use for fixed, default to 0 for others
+      productimages: productImageUrls,
+      productImages: undefined,
+      percent: auctionData.bidIncrementType === "percentage" ? auctionData.bidIncrementRules[0]?.incrementValue : null,
+      minimumincrement: auctionData.bidIncrementType === "fixed" ? auctionData.bidIncrementRules[0]?.incrementValue : 0,
+      requireddocuments: auctionData.requireddocuments ? JSON.parse(auctionData.requireddocuments) : null, // Parse JSON string to jsonb
+      targetprice: auctionData.targetprice || null, // Store targetprice for reverse auctions
+      createdby: createdBy, // Ensure createdby is included
     });
 
     // Insert into Supabase
