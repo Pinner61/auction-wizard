@@ -143,7 +143,8 @@ export interface AuctionFormData {
   bidIncrementRules: BidIncrementRule[]
   isSilentAuction: boolean
   percent ?: number | null // For silent auctions, percentage of the start price
-
+  targetprice?: number | null // For reverse auctions, the target price
+  requireddocuments?: string // JSON string of required documents, parsed to jsonb in DB
   // Step 4: Participation Rules
   participationType: ParticipationType
   participantEmails: string[]
