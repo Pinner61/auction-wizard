@@ -23,6 +23,7 @@ const translations = {
     reverseAuction: "Reverse Auction",
     reverseAuctionDesc: "Price decreases with bids",
     auctionSubType: "Auction Sub-Type",
+    auctionFormat: "Auction Format", // Added new key
     englishAuction: "English Auction",
     englishAuctionDesc: "Open ascending price auction",
     silentAuction: "Silent Auction",
@@ -124,6 +125,7 @@ const translations = {
     auctionDetails: "Auction Details",
     auctionType: "Auction Type",
     scheduledStart: "Scheduled Start",
+    reverseDetails: "Reverse Details", // Added new key
 
     // Navigation
     previous: "Previous",
@@ -179,6 +181,7 @@ const translations = {
     reverseAuction: "Enchère inversée",
     reverseAuctionDesc: "Le prix diminue avec les offres",
     auctionSubType: "Sous-type d'enchère",
+    auctionFormat: "Format d'enchère", // Added new key
     englishAuction: "Enchère anglaise",
     englishAuctionDesc: "Enchère ouverte à prix croissant",
     silentAuction: "Enchère silencieuse",
@@ -280,6 +283,7 @@ const translations = {
     auctionDetails: "Détails de l'enchère",
     auctionType: "Type d'enchère",
     scheduledStart: "Début programmé",
+    reverseDetails: "Détails inversés", // Added new key
 
     // Navigation
     previous: "Précédent",
@@ -334,6 +338,7 @@ const translations = {
     reverseAuction: "Reverse Auction",
     reverseAuctionDesc: "Price decreases with bids",
     auctionSubType: "Auction Sub-Type",
+    auctionFormat: "Formato de Subasta", // Added new key
     englishAuction: "English Auction",
     englishAuctionDesc: "Open ascending price auction",
     silentAuction: "Silent Auction",
@@ -435,6 +440,7 @@ const translations = {
     auctionDetails: "Auction Details",
     auctionType: "Auction Type",
     scheduledStart: "Scheduled Start",
+    reverseDetails: "Detalles Inversos", // Added new key
 
     // Navigation
     previous: "Previous",
@@ -489,6 +495,7 @@ const translations = {
     reverseAuction: "Reverse Auction",
     reverseAuctionDesc: "Price decreases with bids",
     auctionSubType: "Auction Sub-Type",
+    auctionFormat: "Auktionsformat", // Added new key
     englishAuction: "English Auction",
     englishAuctionDesc: "Open ascending price auction",
     silentAuction: "Silent Auction",
@@ -590,6 +597,7 @@ const translations = {
     auctionDetails: "Auction Details",
     auctionType: "Auction Type",
     scheduledStart: "Scheduled Start",
+    reverseDetails: "Umgekehrte Details", // Added new key
 
     // Navigation
     previous: "Previous",
@@ -644,6 +652,7 @@ const translations = {
     reverseAuction: "Reverse Auction",
     reverseAuctionDesc: "Price decreases with bids",
     auctionSubType: "Auction Sub-Type",
+    auctionFormat: "नीलामी प्रारूप", // Added new key
     englishAuction: "English Auction",
     englishAuctionDesc: "Open ascending price auction",
     silentAuction: "Silent Auction",
@@ -745,6 +754,7 @@ const translations = {
     auctionDetails: "Auction Details",
     auctionType: "Auction Type",
     scheduledStart: "Scheduled Start",
+    reverseDetails: "रिवर्स विवरण", // Added new key
 
     // Navigation
     previous: "Previous",
@@ -783,7 +793,6 @@ const translations = {
     type: "Type",
     product: "Product",
     bidding: "Bidding",
-    bidding: "Bidding",
     rules: "Rules",
     terms: "Terms",
     summary: "Summary",
@@ -800,6 +809,7 @@ const translations = {
     reverseAuction: "Reverse Auction",
     reverseAuctionDesc: "Price decreases with bids",
     auctionSubType: "Auction Sub-Type",
+    auctionFormat: "拍卖格式", // Added new key
     englishAuction: "English Auction",
     englishAuctionDesc: "Open ascending price auction",
     silentAuction: "Silent Auction",
@@ -901,6 +911,7 @@ const translations = {
     auctionDetails: "Auction Details",
     auctionType: "Auction Type",
     scheduledStart: "Scheduled Start",
+    reverseDetails: "反向详情", // Added new key
 
     // Navigation
     previous: "Previous",
@@ -955,6 +966,7 @@ const translations = {
     reverseAuction: "Reverse Auction",
     reverseAuctionDesc: "Price decreases with bids",
     auctionSubType: "Auction Sub-Type",
+    auctionFormat: "オークション形式", // Added new key
     englishAuction: "English Auction",
     englishAuctionDesc: "Open ascending price auction",
     silentAuction: "Silent Auction",
@@ -1056,6 +1068,7 @@ const translations = {
     auctionDetails: "Auction Details",
     auctionType: "Auction Type",
     scheduledStart: "Scheduled Start",
+    reverseDetails: "リバース詳細", // Added new key
 
     // Navigation
     previous: "Previous",
@@ -1110,6 +1123,7 @@ const translations = {
     reverseAuction: "Reverse Auction",
     reverseAuctionDesc: "Price decreases with bids",
     auctionSubType: "Auction Sub-Type",
+    auctionFormat: "صيغة المزاد", // Added new key
     englishAuction: "English Auction",
     englishAuctionDesc: "Open ascending price auction",
     silentAuction: "Silent Auction",
@@ -1211,6 +1225,7 @@ const translations = {
     auctionDetails: "Auction Details",
     auctionType: "Auction Type",
     scheduledStart: "Scheduled Start",
+    reverseDetails: "تفاصيل عكسية", // Added new key
 
     // Navigation
     previous: "Previous",
