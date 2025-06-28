@@ -2772,7 +2772,11 @@ return (
           <option value="USD">USD</option>
           <option value="EUR">EUR</option>
           <option value="GBP">GBP</option>
-          <option value="PKR">PKR</option>
+          <option value="JPY">JPY</option>
+          <option value="INR">INR</option>
+          <option value="AUD">AUD</option>
+          <option value="CAD">CAD</option>
+          <option value="CNY">CNY</option>
         </select>
         <div className="relative rounded-md shadow-sm w-3/4">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
