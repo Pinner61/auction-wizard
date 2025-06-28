@@ -1,6 +1,7 @@
 "use client";
 
 import type React from "react";
+import Select from "react-select";
 
 import { useState, useRef, useEffect } from "react";
 import { Inter } from "next/font/google";
@@ -26,6 +27,7 @@ import {
   validateStep3,
   validateStep4,
   validateStep5,
+  validateStep7, // Added for Step 7 validation
   isValidEmail,
   type ValidationError,
 } from "./validation-utils";
@@ -47,7 +49,34 @@ interface DeletionInfo {
   name: string;
 }
 
-// Default form data
+const requiredDocumentOptions = [
+  { label: "Experience of Supplier", value: "Experience of Supplier" },
+  { label: "Technical Proposal", value: "Technical Proposal" },
+  { label: "Cost Proposal", value: "Cost Proposal" },
+  { label: "Tax Compliance Certificate", value: "Tax Compliance Certificate" },
+  { label: "Business License", value: "Business License" },
+  { label: "Industry Certifications", value: "Industry Certifications" },
+  { label: "NDA / Confidentiality Agreement", value: "NDA / Confidentiality Agreement" },
+  { label: "Conflict of Interest Declaration", value: "Conflict of Interest Declaration" },
+  { label: "Annual Turnover – Last 3 Years", value: "Annual Turnover – Last 3 Years" },
+  { label: "Audited Financial Statements", value: "Audited Financial Statements" },
+  { label: "Experience Summary", value: "Experience Summary" },
+  { label: "List of Past Projects", value: "List of Past Projects" },
+  { label: "Key Personnel CVs", value: "Key Personnel CVs" },
+  { label: "Company Profile", value: "Company Profile" },
+  { label: "Certificate of Incorporation / Registration", value: "Certificate of Incorporation / Registration" },
+  { label: "Bank Reference Letter or Credit Rating Report", value: "Bank Reference Letter or Credit Rating Report" },
+  { label: "Compliance with Environmental and Social Standards", value: "Compliance with Environmental and Social Standards" },
+  { label: "Quality Assurance Policy / ISO Certifications", value: "Quality Assurance Policy / ISO Certifications" },
+  { label: "Work Plan / Implementation Schedule", value: "Work Plan / Implementation Schedule" },
+  { label: "References / Client Testimonials", value: "References / Client Testimonials" },
+];
+type Option = {
+  label: string;
+  value: string;
+};
+
+// Default form data (aligned with assumed AuctionFormData)
 const defaultFormData: AuctionFormData = {
   // Step 1: Auction Type
   auctionType: "forward",
@@ -100,6 +129,10 @@ const defaultFormData: AuctionFormData = {
   enableNotifications: true,
   notificationTypes: ["email"],
   enableAnalytics: true,
+
+  // Step 7: Reverse Auction Details (new fields)
+  targetprice: undefined, // Numeric field for reverse auctions
+  requireddocuments: "[]", // Array for required documents
 };
 
 interface AuctionWizardContentProps {
@@ -137,6 +170,10 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
   useEffect(() => {
     setFormData((prev) => ({ ...prev, language }));
   }, [language]);
+
+  useEffect(() => {
+  setFormData((prev) => ({ ...prev, startPrice: 1, minimumIncrement: 1 }));
+}, []); // Runs once on mount
 
   // Validation state
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
@@ -281,6 +318,11 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
       case 5:
         stepValidation = validateStep5(formData.termsAndConditions);
         break;
+      case 7:
+        if (formData.auctionType === "reverse") {
+          stepValidation = validateStep7(formData.targetprice ?? 0, formData.requireddocuments ?? "");
+        }
+        break;
     }
 
     setValidationErrors(stepValidation.errors);
@@ -319,6 +361,12 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
         case "scheduledStart":
           scheduledDateRef.current?.focus();
           break;
+        case "targetprice":
+          // Add targetpriceRef if needed (to be added in Step 7 UI)
+          break;
+        case "requireddocuments":
+          // Add requireddocumentsRef if needed (to be added in Step 7 UI)
+          break;
       }
     }, 100);
   };
@@ -340,40 +388,73 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
     setShowValidationErrors(false);
   }, [currentStep]);
 
-  const handleNext = () => {
-    if (currentStep < 6 && !isAnimating) {
-      // Validate current step before proceeding
-      if (!validateCurrentStep()) {
-        return;
-      }
+const handleNext = () => {
+  if (isAnimating) return;
 
-      setIsAnimating(true);
-      setPreviousStep(currentStep);
-      setDirection("forward");
-      setTimeout(() => {
-        setCurrentStep(currentStep + 1);
-        window.scrollTo(0, 0);
-        setTimeout(() => {
-          setIsAnimating(false);
-        }, 300);
-      }, 300);
-    }
-  };
+  setIsAnimating(true);
+  setDirection("forward");
+  setPreviousStep(currentStep);
 
-  const handlePrevious = () => {
-    if (currentStep > 1 && !isAnimating) {
-      setIsAnimating(true);
-      setPreviousStep(currentStep);
-      setDirection("backward");
-      setTimeout(() => {
-        setCurrentStep(currentStep - 1);
-        window.scrollTo(0, 0);
-        setTimeout(() => {
-          setIsAnimating(false);
-        }, 300);
-      }, 300);
+  const isValid = validateCurrentStep();
+  if (!isValid) {
+    setShowValidationErrors(true);
+    setIsAnimating(false);
+    return;
+  }
+
+  if (formData.auctionType === "reverse") {
+    if (currentStep === 1) {
+      setCurrentStep(7);
+    } else if (currentStep === 7) {
+      setCurrentStep(3);
+    } else if (currentStep === 3) {
+      setCurrentStep(4);
+    } else if (currentStep === 4) {
+      setCurrentStep(5);
+    } else if (currentStep === 5) {
+      setCurrentStep(6);
+    } else {
+      handleLaunchAuction(); // Launch from step 6
     }
-  };
+  } else {
+    if (currentStep < 6) {
+      setCurrentStep(currentStep + 1);
+    } else {
+      handleLaunchAuction();
+    }
+  }
+
+  setShowValidationErrors(false);
+  setIsAnimating(false);
+};
+const handlePrevious = () => {
+  if (isAnimating) return;
+
+  setIsAnimating(true);
+  setDirection("backward");
+  setPreviousStep(currentStep);
+
+  if (formData.auctionType === "reverse") {
+    if (currentStep === 3) {
+      setCurrentStep(7);
+    } else if (currentStep === 7) {
+      setCurrentStep(1);
+    } else if (currentStep === 4) {
+      setCurrentStep(3);
+    } else if (currentStep === 5) {
+      setCurrentStep(4);
+    } else if (currentStep === 6) {
+      setCurrentStep(5);
+    }
+  } else {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  }
+
+  setShowValidationErrors(false);
+  setIsAnimating(false);
+};
 
   const handleSaveDraft = () => {
     // In a real app, this would save to backend or localStorage
@@ -439,6 +520,15 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
       allErrors.push(...step5Validation.errors);
     }
 
+    // Validate Step 7 for reverse auctions
+    if (formData.auctionType === "reverse") {
+      const step7Validation = validateStep7(formData.targetprice ?? 0, formData.requireddocuments ?? "");;
+      if (!step7Validation.isValid) {
+        allValid = false;
+        allErrors.push(...step7Validation.errors);
+      }
+    }
+
     if (!allValid) {
       setValidationErrors(allErrors);
       setShowValidationErrors(true);
@@ -456,8 +546,10 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
         createdby: user.email,
         productimages: formData.productImages.map((img) => img.url),
         productdocuments: formData.productDocuments.map((doc) => doc.url || ""),
-        percent: formData.bidIncrementType === "percentage" ? formData.bidIncrementRules[0]?.incrementValue : null, // Set percent for percentage type
-        minimumIncrement: formData.bidIncrementType === "fixed" ? formData.bidIncrementRules[0]?.incrementValue : 0, // Set minimumIncrement for fixed type, 0 otherwise
+        percent: formData.bidIncrementType === "percentage" ? formData.bidIncrementRules[0]?.incrementValue : null,
+        minimumIncrement: formData.bidIncrementType === "fixed" ? formData.bidIncrementRules[0]?.incrementValue : 0,
+        targetprice: formData.targetprice, // Include targetprice if defined
+        requireddocuments: formData.requireddocuments, // Include requireddocuments if defined
       };
 
       const res = await fetch(`/api/auctions?user=${encodeURIComponent(user.email)}`, {
@@ -475,9 +567,8 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
     } catch (err) {
       alert("Failed to create auction. Please try again.");
     }
-
-    setIsLaunched(true);
   };
+
   const handleGoToDashboard = () => {
     // In a real app, this would navigate to the dashboard
     alert("Navigating to dashboard...");
@@ -502,24 +593,21 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
       ],
     });
   };
-const handleDocumentsUploaded = async (newDocuments: UploadedFile[]) => {
-  const files = newDocuments.map((doc) => doc.file as unknown as File); // Safer cast via unknown
-  const uploadedFiles = await uploadDocuments(files);
-  setFormData({
-    ...formData,
-    productDocuments: [
-      ...formData.productDocuments,
-      ...uploadedFiles.map(file => ({
-        ...file,
-        url: file.url || "", // Ensure url is a string
-      } as const)), // Type assertion to enforce UploadedFile shape
-    ],
-  });
-};
 
-// ... (rest of the component)
-
-// ... (rest of the component remains the same)
+  const handleDocumentsUploaded = async (newDocuments: UploadedFile[]) => {
+    const files = newDocuments.map((doc) => doc.file as unknown as File); // Safer cast via unknown
+    const uploadedFiles = await uploadDocuments(files);
+    setFormData({
+      ...formData,
+      productDocuments: [
+        ...formData.productDocuments,
+        ...uploadedFiles.map((file) => ({
+          ...file,
+          url: file.url || "", // Ensure url is a string
+        }) as const), // Type assertion to enforce UploadedFile shape
+      ],
+    });
+  };
 
   // Handler for removed images
   const handleImageRemoved = async (fileId: string) => {
@@ -541,168 +629,167 @@ const handleDocumentsUploaded = async (newDocuments: UploadedFile[]) => {
 
   // Show confirmation modal before deleting a participant
   const confirmRemoveParticipant = (index: number) => {
-    const email = formData.participantEmails[index]
+    const email = formData.participantEmails[index];
     setDeletionInfo({
       type: "participant",
       index,
       name: email,
-    })
-    setShowDeleteModal(true)
-  }
+    });
+    setShowDeleteModal(true);
+  };
+// Handle actual deletion after confirmation
+const handleConfirmDelete = () => {
+  if (!deletionInfo.type) return;
 
-  // Handle actual deletion after confirmation
-  const handleConfirmDelete = () => {
-    if (!deletionInfo.type) return
-
-    if (deletionInfo.type === "participant") {
-      const updatedEmails = [...formData.participantEmails]
-      updatedEmails.splice(deletionInfo.index, 1)
-
-      setFormData({
-        ...formData,
-        participantEmails: updatedEmails,
-      })
-    }
-
-    // Close the modal and reset deletion info
-    setShowDeleteModal(false)
-    setDeletionInfo({ type: null, index: -1, name: "" })
-  }
-
-  // Cancel deletion
-  const handleCancelDelete = () => {
-    setShowDeleteModal(false)
-    setDeletionInfo({ type: null, index: -1, name: "" })
-  }
-
-  const handleAddParticipant = (email: string) => {
-    if (!email.trim()) {
-      setEmailError("Email cannot be empty")
-      return
-    }
-
-    if (!isValidEmail(email)) {
-      setEmailError("Please enter a valid email address")
-      return
-    }
-
-    if (formData.participantEmails.includes(email)) {
-      setEmailError("This email is already added")
-      return
-    }
+  if (deletionInfo.type === "participant") {
+    const updatedEmails = [...formData.participantEmails];
+    updatedEmails.splice(deletionInfo.index, 1);
 
     setFormData({
       ...formData,
-      participantEmails: [...formData.participantEmails, email],
-    })
-    setEmailInput("")
-    setEmailError("")
+      participantEmails: updatedEmails,
+    });
   }
 
-  // Handle scheduled date and time changes
-  const handleScheduledDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const dateValue = e.target.value
+  // Close the modal and reset deletion info
+  setShowDeleteModal(false);
+  setDeletionInfo({ type: null, index: -1, name: "" });
+};
 
-    // Get the time portion from the existing scheduledStart
-    const existingDate = new Date(formData.scheduledStart)
-    const hours = existingDate.getHours().toString().padStart(2, "0")
-    const minutes = existingDate.getMinutes().toString().padStart(2, "0")
-    const timeString = `${hours}:${minutes}`
+// Cancel deletion
+const handleCancelDelete = () => {
+  setShowDeleteModal(false);
+  setDeletionInfo({ type: null, index: -1, name: "" });
+};
 
-    // Combine the new date with the existing time
-    const newScheduledStart = new Date(`${dateValue}T${timeString}:00`)
-
-    setFormData({
-      ...formData,
-      scheduledStart: newScheduledStart.toISOString(),
-    })
+const handleAddParticipant = (email: string) => {
+  if (!email.trim()) {
+    setEmailError("Email cannot be empty");
+    return;
   }
 
-  const handleScheduledTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const timeValue = e.target.value
-
-    // Get the date portion from the existing scheduledStart
-    const existingDate = new Date(formData.scheduledStart)
-    const year = existingDate.getFullYear()
-    const month = (existingDate.getMonth() + 1).toString().padStart(2, "0")
-    const day = existingDate.getDate().toString().padStart(2, "0")
-    const dateString = `${year}-${month}-${day}`
-
-    // Combine the existing date with the new time
-    const newScheduledStart = new Date(`${dateString}T${timeValue}:00`)
-
-    setFormData({
-      ...formData,
-      scheduledStart: newScheduledStart.toISOString(),
-    })
+  if (!isValidEmail(email)) {
+    setEmailError("Please enter a valid email address");
+    return;
   }
 
-  // Format date for input fields
-  const formatDateForInput = (isoString: string): string => {
-    const date = new Date(isoString)
-    return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`
+  if (formData.participantEmails.includes(email)) {
+    setEmailError("This email is already added");
+    return;
   }
 
-  // Format time for input fields
-  const formatTimeForInput = (isoString: string): string => {
-    const date = new Date(isoString)
-    return `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`
+  setFormData({
+    ...formData,
+    participantEmails: [...formData.participantEmails, email],
+  });
+  setEmailInput("");
+  setEmailError("");
+};
+
+// Handle scheduled date and time changes
+const handleScheduledDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const dateValue = e.target.value;
+
+  // Get the time portion from the existing scheduledStart
+  const existingDate = new Date(formData.scheduledStart);
+  const hours = existingDate.getHours().toString().padStart(2, "0");
+  const minutes = existingDate.getMinutes().toString().padStart(2, "0");
+  const timeString = `${hours}:${minutes}`;
+
+  // Combine the new date with the existing time
+  const newScheduledStart = new Date(`${dateValue}T${timeString}:00`);
+
+  setFormData({
+    ...formData,
+    scheduledStart: newScheduledStart.toISOString(),
+  });
+};
+
+const handleScheduledTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const timeValue = e.target.value;
+
+  // Get the date portion from the existing scheduledStart
+  const existingDate = new Date(formData.scheduledStart);
+  const year = existingDate.getFullYear();
+  const month = (existingDate.getMonth() + 1).toString().padStart(2, "0");
+  const day = existingDate.getDate().toString().padStart(2, "0");
+  const dateString = `${year}-${month}-${day}`;
+
+  // Combine the existing date with the new time
+  const newScheduledStart = new Date(`${dateString}T${timeValue}:00`);
+
+  setFormData({
+    ...formData,
+    scheduledStart: newScheduledStart.toISOString(),
+  });
+};
+
+// Format date for input fields
+const formatDateForInput = (isoString: string): string => {
+  const date = new Date(isoString);
+  return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}-${date.getDate().toString().padStart(2, "0")}`;
+};
+
+// Format time for input fields
+const formatTimeForInput = (isoString: string): string => {
+  const date = new Date(isoString);
+  return `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+};
+
+// Format date and time for display
+const formatDateTime = (isoString: string): string => {
+  const date = new Date(isoString);
+  return date.toLocaleString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
+
+// ... (AI Description Generation and remaining code would follow, but limited to 624 lines)
+
+// AI Description Generation
+const generateProductDescription = async () => {
+  if (!formData.productName || !formData.categoryId) return;
+
+  // Check if API key is available
+  if (!apiKey) {
+    setShowApiKeySetup(true);
+    return;
   }
 
-  // Format date and time for display
-  const formatDateTime = (isoString: string): string => {
-    const date = new Date(isoString)
-    return date.toLocaleString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    })
-  }
+  setIsGeneratingDescription(true);
+  setShowAiSuggestion(false);
 
-  // ... (AI Description Generation and remaining code would follow, but limited to 624 lines)
+  try {
+    // Get category name for context
+    const categoryName = PRODUCT_CATEGORIES.find((cat) => cat.id === formData.categoryId)?.name || "product";
+    const subCategoryName = formData.subCategoryId
+      ? PRODUCT_CATEGORIES.find((cat) => cat.id === formData.categoryId)?.subcategories?.find(
+          (sub) => sub.id === formData.subCategoryId,
+        )?.name
+      : "";
 
-  // AI Description Generation
-  const generateProductDescription = async () => {
-    if (!formData.productName || !formData.categoryId) return
+    // Build comprehensive context from available product information
+    const productContext = {
+      name: formData.productName,
+      category: categoryName,
+      subCategory: subCategoryName || "",
+      brand: formData.brand || "",
+      model: formData.model || "",
+      sku: formData.sku || "",
+      auctionType: formData.auctionType,
+      attributes: formData.attributes
+        .filter((attr) => attr.value)
+        .map((attr) => `${attr.name}: ${attr.value}`)
+        .join(", "),
+    };
 
-    // Check if API key is available
-    if (!apiKey) {
-      setShowApiKeySetup(true)
-      return
-    }
-
-    setIsGeneratingDescription(true)
-    setShowAiSuggestion(false)
-
-    try {
-      // Get category name for context
-      const categoryName = PRODUCT_CATEGORIES.find((cat) => cat.id === formData.categoryId)?.name || "product"
-      const subCategoryName = formData.subCategoryId
-        ? PRODUCT_CATEGORIES.find((cat) => cat.id === formData.categoryId)?.subcategories?.find(
-            (sub) => sub.id === formData.subCategoryId,
-          )?.name
-        : ""
-
-      // Build comprehensive context from available product information
-      const productContext = {
-        name: formData.productName,
-        category: categoryName,
-        subCategory: subCategoryName || "",
-        brand: formData.brand || "",
-        model: formData.model || "",
-        sku: formData.sku || "",
-        auctionType: formData.auctionType,
-        attributes: formData.attributes
-          .filter((attr) => attr.value)
-          .map((attr) => `${attr.name}: ${attr.value}`)
-          .join(", "),
-      }
-
-      // Enhanced prompt for GPT-4 Turbo with more specific instructions
-      const prompt = `Generate a compelling, professional product description for a ${formData.auctionType} auction listing.
+    // Enhanced prompt for GPT-4 Turbo with more specific instructions
+    const prompt = `Generate a compelling, professional product description for a ${formData.auctionType} auction listing.
 
 PRODUCT DETAILS:
 - Name: ${productContext.name}
@@ -725,307 +812,424 @@ REQUIREMENTS:
 
 TONE: Professional, confident, and engaging
 FORMAT: Single paragraph, no bullet points
-FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requirements for suppliers" : "Emphasize benefits and value for buyers"}`
+FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requirements for suppliers" : "Emphasize benefits and value for buyers"}`;
 
-      const { text } = await generateText({
-        model: openai("gpt-4-turbo", {
-          apiKey: apiKey,
-        }),
-        prompt: prompt,
-        system:
-          "You are an expert auction copywriter specializing in creating high-converting product descriptions that maximize bidding activity and final sale prices. You understand buyer psychology and auction dynamics.",
-        maxTokens: 300,
-        temperature: 0.7,
-      })
+    const { text } = await generateText({
+      model: openai("gpt-4-turbo", {
+        apiKey: apiKey,
+      }),
+      prompt: prompt,
+      system:
+        "You are an expert auction copywriter specializing in creating high-converting product descriptions that maximize bidding activity and final sale prices. You understand buyer psychology and auction dynamics.",
+      maxTokens: 300,
+      temperature: 0.7,
+    });
 
-      setAiGeneratedDescription(text.trim())
-      setShowAiSuggestion(true)
-      setHasUserSeenAiSuggestion(true)
-    } catch (error: any) {
-      console.error("Error generating description:", error)
-      // Enhanced error handling with user-friendly messages
-      if (error.message?.includes("API key") || error.message?.includes("Unauthorized")) {
-        alert("Invalid API key. Please check your OpenAI API key and try again.")
-        setShowApiKeySetup(true)
-      } else if (error.message?.includes("rate limit")) {
-        alert("AI service is temporarily busy. Please try again in a moment.")
-      } else if (error.message?.includes("model")) {
-        alert("AI model temporarily unavailable. Please try again or write your description manually.")
-      } else {
-        alert("Unable to generate description at this time. Please write your own description.")
+    setAiGeneratedDescription(text.trim());
+    setShowAiSuggestion(true);
+    setHasUserSeenAiSuggestion(true);
+  } catch (error: any) {
+    console.error("Error generating description:", error);
+    // Enhanced error handling with user-friendly messages
+    if (error.message?.includes("API key") || error.message?.includes("Unauthorized")) {
+      alert("Invalid API key. Please check your OpenAI API key and try again.");
+      setShowApiKeySetup(true);
+    } else if (error.message?.includes("rate limit")) {
+      alert("AI service is temporarily busy. Please try again in a moment.");
+    } else if (error.message?.includes("model")) {
+      alert("AI model temporarily unavailable. Please try again or write your description manually.");
+    } else {
+      alert("Unable to generate description at this time. Please write your own description.");
+    }
+  } finally {
+    setIsGeneratingDescription(false);
+  }
+};
+
+// Handle AI suggestion acceptance
+const handleAcceptAiDescription = () => {
+  setFormData({
+    ...formData,
+    productDescription: aiGeneratedDescription,
+  });
+  setShowAiSuggestion(false);
+  setAiGeneratedDescription("");
+};
+
+// Handle AI suggestion rejection
+const handleRejectAiDescription = () => {
+  setShowAiSuggestion(false);
+  setAiGeneratedDescription("");
+  // Focus on the description textarea
+  setTimeout(() => {
+    productDescriptionRef.current?.focus();
+  }, 100);
+};
+
+// Auto-generate description when key fields change
+useEffect(() => {
+  // Only auto-generate if we have minimum required information
+  const hasMinimumInfo =
+    formData.productName &&
+    formData.categoryId &&
+    formData.productName.length >= 3 &&
+    !formData.productDescription &&
+    !hasUserSeenAiSuggestion &&
+    !isGeneratingDescription &&
+    currentStep === 2 &&
+    !formData.isMultiLot &&
+    apiKey;
+
+  if (hasMinimumInfo) {
+    // Enhanced debouncing - wait for user to finish typing
+    const timer = setTimeout(() => {
+      // Double-check conditions haven't changed during debounce
+      if (formData.productName && formData.categoryId && !formData.productDescription && !isGeneratingDescription) {
+        generateProductDescription();
       }
-    } finally {
-      setIsGeneratingDescription(false)
-    }
+    }, 1000); // 1 second debounce as requested
+
+    return () => clearTimeout(timer);
   }
+}, [
+  formData.productName,
+  formData.categoryId,
+  formData.subCategoryId,
+  formData.brand,
+  formData.model,
+  formData.attributes,
+  formData.auctionType,
+  currentStep,
+  formData.isMultiLot,
+  apiKey,
+]);
 
-  // Handle AI suggestion acceptance
-  const handleAcceptAiDescription = () => {
-    setFormData({
-      ...formData,
-      productDescription: aiGeneratedDescription,
-    })
-    setShowAiSuggestion(false)
-    setAiGeneratedDescription("")
+// Get animation classes based on direction and animation state
+const getAnimationClasses = () => {
+  if (!isAnimating) return "opacity-100";
+
+  return direction === "forward" ? "animate-slide-in-right" : "animate-slide-in-left";
+};
+
+// Error message component
+const ErrorMessage = ({ message }: { message: string }) => (
+  <div className="flex items-center mt-1 text-destructive-600 dark:text-destructive-400 text-sm">
+    <AlertCircle className="h-4 w-4 mr-1" />
+    <span>{message}</span>
+  </div>
+);
+
+// Get currency symbol
+const getCurrencySymbol = (currency: Currency) => {
+  switch (currency) {
+    case "USD":
+      return "$";
+    case "EUR":
+      return "€";
+    case "GBP":
+      return "£";
+    case "JPY":
+      return "¥";
+    case "INR":
+      return "₹";
+    case "AUD":
+      return "A$";
+    case "CAD":
+      return "C$";
+    case "CNY":
+      return "¥";
+    default:
+      return "$";
   }
+};
 
-  // Handle AI suggestion rejection
-  const handleRejectAiDescription = () => {
-    setShowAiSuggestion(false)
-    setAiGeneratedDescription("")
-    // Focus on the description textarea
-    setTimeout(() => {
-      productDescriptionRef.current?.focus()
-    }, 100)
-  }
-
-  // Auto-generate description when key fields change
-  useEffect(() => {
-    // Only auto-generate if we have minimum required information
-    const hasMinimumInfo =
-      formData.productName &&
-      formData.categoryId &&
-      formData.productName.length >= 3 &&
-      !formData.productDescription &&
-      !hasUserSeenAiSuggestion &&
-      !isGeneratingDescription &&
-      currentStep === 2 &&
-      !formData.isMultiLot &&
-      apiKey
-
-    if (hasMinimumInfo) {
-      // Enhanced debouncing - wait for user to finish typing
-      const timer = setTimeout(() => {
-        // Double-check conditions haven't changed during debounce
-        if (formData.productName && formData.categoryId && !formData.productDescription && !isGeneratingDescription) {
-          generateProductDescription()
-        }
-      }, 1000) // 1 second debounce as requested
-
-      return () => clearTimeout(timer)
-    }
-  }, [
-    formData.productName,
-    formData.categoryId,
-    formData.subCategoryId,
-    formData.brand,
-    formData.model,
-    formData.attributes,
-    formData.auctionType,
-    currentStep,
-    formData.isMultiLot,
-    apiKey,
-  ])
-
-  // Get animation classes based on direction and animation state
-  const getAnimationClasses = () => {
-    if (!isAnimating) return "opacity-100"
-
-    return direction === "forward" ? "animate-slide-in-right" : "animate-slide-in-left"
-  }
-
-  // Error message component
-  const ErrorMessage = ({ message }: { message: string }) => (
-    <div className="flex items-center mt-1 text-destructive-600 dark:text-destructive-400 text-sm">
-      <AlertCircle className="h-4 w-4 mr-1" />
-      <span>{message}</span>
-    </div>
-  )
-
-  // Get currency symbol
-  const getCurrencySymbol = (currency: Currency) => {
-    switch (currency) {
-      case "USD":
-        return "$"
-      case "EUR":
-        return "€"
-      case "GBP":
-        return "£"
-      case "JPY":
-        return "¥"
-      case "INR":
-        return "₹"
-      case "AUD":
-        return "A$"
-      case "CAD":
-        return "C$"
-      case "CNY":
-        return "¥"
-      default:
-        return "$"
-    }
-  }
-
-  // Updated render section with translations
-  return (
-    <div className={`min-h-screen bg-background p-4 md:p-8 transition-colors duration-300 ${inter.className}`}>
-      <div className="max-w-4xl mx-auto card">
-        {/* Header with Theme Toggle */}
-        <div className="w-full bg-white dark:bg-gray-800 p-4 border-b dark:border-gray-700 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">{t("auctionBuilder")}</h1>
-          <div className="flex items-center space-x-2">
-            <div className="mr-2">
-              <LanguageSelector value={formData.language} onChange={handleLanguageChange} />
-            </div>
+// Updated render section with translations
+return (
+  <div className={`min-h-screen bg-background p-4 md:p-8 transition-colors duration-300 ${inter.className}`}>
+    <div className="max-w-4xl mx-auto card">
+      {/* Header with Theme Toggle */}
+      <div className="w-full bg-white dark:bg-gray-800 p-4 border-b dark:border-gray-700 flex justify-between items-center">
+        <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">{t("auctionBuilder")}</h1>
+        <div className="flex items-center space-x-2">
+          <div className="mr-2">
+            <LanguageSelector value={formData.language} onChange={handleLanguageChange} />
           </div>
         </div>
+      </div>
 
-        {/* Progress Indicator - Update step labels */}
-        <div className="w-full bg-white dark:bg-gray-800 p-4 border-b dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            {[1, 2, 3, 4, 5, 6].map((step) => (
-              <div key={step} className="flex flex-col items-center">
-                <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium border-2 transition-all-smooth
-                    ${
-                      currentStep === step
-                        ? "border-corporate-600 bg-corporate-600 text-white dark:border-corporate-500 dark:bg-corporate-500"
-                        : currentStep > step
-                          ? "border-corporate-600 bg-white text-corporate-600 dark:border-corporate-500 dark:bg-gray-800 dark:text-corporate-500"
-                          : "border-gray-300 bg-white text-gray-400 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-500"
-                    }`}
-                >
-                  {currentStep > step ? <CheckCircle className="w-5 h-5" /> : step}
-                </div>
-                <span
-                  className={`mt-2 text-xs hidden sm:block transition-colors-smooth ${
-                    currentStep >= step
-                      ? "text-corporate-600 dark:text-corporate-500"
-                      : "text-gray-400 dark:text-gray-500"
-                  }`}
-                >
-                  {step === 1 && t("type")}
-                  {step === 2 && t("product")}
-                  {step === 3 && t("bidding")}
-                  {step === 4 && t("rules")}
-                  {step === 5 && t("terms")}
-                  {step === 6 && t("summary")}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="relative mt-2">
-            <div className="absolute top-0 left-0 h-1 bg-gray-200 dark:bg-gray-700 w-full rounded-full">
+      {/* Progress Indicator - Update step labels */}
+      <div className="w-full bg-white dark:bg-gray-800 p-4 border-b dark:border-gray-700">
+        <div className="flex items-center justify-between">
+          {[1, 2, 3, 4, 5, formData.auctionType === "reverse" ? 7 : 6].map((step) => (
+            <div key={step} className="flex flex-col items-center">
               <div
-                className="h-1 bg-corporate-600 dark:bg-corporate-500 rounded-full transition-all duration-500 ease-in-out"
-                style={{ width: `${(currentStep - 1) * 20}%` }}
-              ></div>
+                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium border-2 transition-all-smooth
+                  ${
+                    currentStep === step
+                      ? "border-corporate-600 bg-corporate-600 text-white dark:border-corporate-500 dark:bg-corporate-500"
+                      : currentStep > step
+                        ? "border-corporate-600 bg-white text-corporate-600 dark:border-corporate-500 dark:bg-gray-800 dark:text-corporate-500"
+                        : "border-gray-300 bg-white text-gray-400 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-500"
+                  }`}
+              >
+                {currentStep > step ? <CheckCircle className="w-5 h-5" /> : step}
+              </div>
+              <span
+                className={`mt-2 text-xs hidden sm:block transition-colors-smooth ${
+                  currentStep >= step
+                    ? "text-corporate-600 dark:text-corporate-500"
+                    : "text-gray-400 dark:text-gray-500"
+                }`}
+              >
+                {step === 1 && t("type")}
+                {step === 2 && t("product")}
+                {step === 3 && t("bidding")}
+                {step === 4 && t("rules")}
+                {step === 5 && t("terms")}
+                {step === 7 && t("reverseDetails")} {/* New label for Step 7 */}
+                {step === 6 && t("summary")}
+              </span>
+            </div>
+          ))}
+        </div>
+        <div className="relative mt-2">
+          <div className="absolute top-0 left-0 h-1 bg-gray-200 dark:bg-gray-700 w-full rounded-full">
+            <div
+              className="h-1 bg-corporate-600 dark:bg-corporate-500 rounded-full transition-all duration-500 ease-in-out"
+              style={{ width: `${(currentStep - 1) * (100 / (formData.auctionType === "reverse" ? 6 : 5))}%` }}
+            ></div>
+          </div>
+        </div>
+      </div>
+
+      {/* API Key Setup Modal */}
+      {showApiKeySetup && (
+        <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-gray-500 bg-opacity-50 z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+            <h2 className="text-lg font-medium text-gray-800 dark:text-gray-100 mb-4">Setup OpenAI API Key</h2>
+            <ApiKeySetup onApiKeySet={handleApiKeySet} currentApiKey={apiKey} />
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={() => setShowApiKeySetup(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
+      )}
 
-        {/* API Key Setup Modal */}
-        {showApiKeySetup && (
-          <div className="fixed top-0 left-0 w-full h-full flex items-center justify-center bg-gray-500 bg-opacity-50 z-50">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
-              <h2 className="text-lg font-medium text-gray-800 dark:text-gray-100 mb-4">Setup OpenAI API Key</h2>
-              <ApiKeySetup onApiKeySet={handleApiKeySet} currentApiKey={apiKey} />
-              <div className="flex justify-end mt-4">
-                <button
-                  onClick={() => setShowApiKeySetup(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
+      {/* Validation Error Summary */}
+      {showValidationErrors && validationErrors.length > 0 && (
+        <div className="bg-destructive-50 dark:bg-destructive-900/20 border border-destructive-200 dark:border-destructive-800 text-destructive-700 dark:text-destructive-300 p-4 m-4 rounded-md animate-fade-in">
+          <div className="flex items-start">
+            <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="font-medium">{t("pleaseFixErrors")}</h3>
+              <ul className="mt-1 list-disc list-inside text-sm">
+                {validationErrors.map((error, index) => (
+                  <li key={index}>{error.message}</li>
+                ))}
+              </ul>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Validation Error Summary */}
-        {showValidationErrors && validationErrors.length > 0 && (
-          <div className="bg-destructive-50 dark:bg-destructive-900/20 border border-destructive-200 dark:border-destructive-800 text-destructive-700 dark:text-destructive-300 p-4 m-4 rounded-md animate-fade-in">
-            <div className="flex items-start">
-              <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-              <div>
-                <h3 className="font-medium">{t("pleaseFixErrors")}</h3>
-                <ul className="mt-1 list-disc list-inside text-sm">
-                  {validationErrors.map((error, index) => (
-                    <li key={index}>{error.message}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        )}
+      {/* Form Content */}
+      <div className="p-6 relative overflow-hidden bg-white dark:bg-gray-800 transition-colors duration-300">
+        <div className={getAnimationClasses()}>
+          {/* Step 1: Auction Type */}
+          {currentStep === 1 && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{t("selectAuctionType")}</h2>
 
-        {/* Form Content */}
-        <div className="p-6 relative overflow-hidden bg-white dark:bg-gray-800 transition-colors duration-300">
-          <div className={getAnimationClasses()}>
-            {/* Step 1: Auction Type */}
-            {currentStep === 1 && (
-              <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{t("selectAuctionType")}</h2>
-
-                {showTemplateSelector ? (
-                  <div className="space-y-6">
-                    <p className="text-gray-600 dark:text-gray-300">{t("startWithTemplate")}</p>
-                    <TemplateSelector
-                      onSelectTemplate={handleSelectTemplate}
-                      onCreateNew={() => setShowTemplateSelector(false)}
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <div className="space-y-4">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {t("auctionDirection")} <span className="text-destructive-500">*</span>
-                      </label>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div
-                          className={`border rounded-lg p-4 cursor-pointer transition-all-smooth hover-scale 
-                            ${
-                              formData.auctionType === "forward"
-                                ? "border-corporate-500 bg-corporate-50 dark:border-corporate-400 dark:bg-corporate-900/30"
-                                : "border-gray-200 hover:border-corporate-200 dark:border-gray-700 dark:hover:border-corporate-700"
-                            } ${hasError("auctionType") ? "border-destructive-500 dark:border-destructive-400" : ""}`}
-                          onClick={() => setFormData({ ...formData, auctionType: "forward" })}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h3 className="font-medium dark:text-gray-100">{t("forwardAuction")}</h3>
-                              <p className="text-sm text-gray-500 dark:text-gray-400">{t("forwardAuctionDesc")}</p>
-                            </div>
-                            <div
-                              className={`w-5 h-5 rounded-full border transition-all-smooth ${
-                                formData.auctionType === "forward"
-                                  ? "border-corporate-500 bg-corporate-500 dark:border-corporate-400 dark:bg-corporate-400"
-                                  : "border-gray-300 dark:border-gray-600"
-                              }`}
-                            >
-                              {formData.auctionType === "forward" && <CheckCircle className="w-5 h-5 text-white" />}
-                            </div>
+              {showTemplateSelector ? (
+                <div className="space-y-6">
+                  <p className="text-gray-600 dark:text-gray-300">{t("startWithTemplate")}</p>
+                  <TemplateSelector
+                    onSelectTemplate={handleSelectTemplate}
+                    onCreateNew={() => setShowTemplateSelector(false)}
+                  />
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {t("auctionDirection")} <span className="text-destructive-500">*</span>
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div
+                        className={`border rounded-lg p-4 cursor-pointer transition-all-smooth hover-scale 
+                          ${
+                            formData.auctionType === "forward"
+                              ? "border-corporate-500 bg-corporate-50 dark:border-corporate-400 dark:bg-corporate-900/30"
+                              : "border-gray-200 hover:border-corporate-200 dark:border-gray-700 dark:hover:border-corporate-700"
+                          } ${hasError("auctionType") ? "border-destructive-500 dark:border-destructive-400" : ""}`}
+                        onClick={() => setFormData({ ...formData, auctionType: "forward" })}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="font-medium dark:text-gray-100">{t("forwardAuction")}</h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{t("forwardAuctionDesc")}</p>
                           </div>
-                        </div>
-
-                        <div
-                          className={`border rounded-lg p-4 cursor-pointer transition-all-smooth hover-scale 
-                            ${
-                              formData.auctionType === "reverse"
-                                ? "border-corporate-500 bg-corporate-50 dark:border-corporate-400 dark:bg-corporate-900/30"
-                                : "border-gray-200 hover:border-corporate-200 dark:border-gray-700 dark:hover:border-corporate-700"
-                            } ${hasError("auctionType") ? "border-destructive-500 dark:border-destructive-400" : ""}`}
-                          onClick={() => setFormData({ ...formData, auctionType: "reverse" })}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h3 className="font-medium dark:text-gray-100">{t("reverseAuction")}</h3>
-                              <p className="text-sm text-gray-500 dark:text-gray-400">{t("reverseAuctionDesc")}</p>
-                            </div>
-                            <div
-                              className={`w-5 h-5 rounded-full border transition-all-smooth ${
-                                formData.auctionType === "reverse"
-                                  ? "border-corporate-500 bg-corporate-500 dark:border-corporate-400 dark:bg-corporate-400"
-                                  : "border-gray-300 dark:border-gray-600"
-                              }`}
-                            >
-                              {formData.auctionType === "reverse" && <CheckCircle className="w-5 h-5 text-white" />}
-                            </div>
+                          <div
+                            className={`w-5 h-5 rounded-full border transition-all-smooth ${
+                              formData.auctionType === "forward"
+                                ? "border-corporate-500 bg-corporate-500 dark:border-corporate-400 dark:bg-corporate-400"
+                                : "border-gray-300 dark:border-gray-600"
+                            }`}
+                          >
+                            {formData.auctionType === "forward" && <CheckCircle className="w-5 h-5 text-white" />}
                           </div>
                         </div>
                       </div>
-                      {hasError("auctionType") && <ErrorMessage message={getErrorMessage("auctionType")} />}
+                      <div
+                        className={`border rounded-lg p-4 cursor-pointer transition-all-smooth hover-scale 
+                          ${
+                            formData.auctionType === "reverse"
+                              ? "border-corporate-500 bg-corporate-50 dark:border-corporate-400 dark:bg-corporate-900/30"
+                              : "border-gray-200 hover:border-corporate-200 dark:border-gray-700 dark:hover:border-corporate-700"
+                          } ${hasError("auctionType") ? "border-destructive-500 dark:border-destructive-400" : ""}`}
+                        onClick={() => setFormData({ ...formData, auctionType: "reverse" })}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h3 className="font-medium dark:text-gray-100">{t("reverseAuction")}</h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{t("reverseAuctionDesc")}<br /><span className="text-xs text-gray-400">Includes an additional step for target price and required documents.</span></p>
+                          </div>
+                          <div
+                            className={`w-5 h-5 rounded-full border transition-all-smooth ${
+                              formData.auctionType === "reverse"
+                                ? "border-corporate-500 bg-corporate-500 dark:border-corporate-400 dark:bg-corporate-400"
+                                : "border-gray-300 dark:border-gray-600"
+                            }`}
+                          >
+                            {formData.auctionType === "reverse" && <CheckCircle className="w-5 h-5 text-white" />}
+                          </div>
+                        </div>
+                      </div>
                     </div>
+                    {hasError("auctionType") && <ErrorMessage message={getErrorMessage("auctionType")} />}
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      {t("auctionFormat")} <span className="text-destructive-500">*</span>
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {formData.auctionType === "forward" && (
+                        <>
+                          <div
+                            className={`border rounded-lg p-4 cursor-pointer transition-all-smooth hover-scale 
+                              ${
+                                formData.auctionSubType === "english"
+                                  ? "border-corporate-500 bg-corporate-50 dark:border-corporate-400 dark:bg-corporate-900/30"
+                                  : "border-gray-200 hover:border-corporate-200 dark:border-gray-700 dark:hover:border-corporate-700"
+                              }`}
+                            onClick={() => setFormData({ ...formData, auctionSubType: "english" })}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h3 className="font-medium dark:text-gray-100">{t("englishAuction")}</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{t("englishAuctionDesc")}</p>
+                              </div>
+                              <div
+                                className={`w-5 h-5 rounded-full border transition-all-smooth ${
+                                  formData.auctionSubType === "english"
+                                    ? "border-corporate-500 bg-corporate-500 dark:border-corporate-400 dark:bg-corporate-400"
+                                    : "border-gray-300 dark:border-gray-600"
+                                }`}
+                              >
+                                {formData.auctionSubType === "english" && <CheckCircle className="w-5 h-5 text-white" />}
+                              </div>
+                            </div>
+                          </div>
+                          <div
+                            className={`border rounded-lg p-4 cursor-pointer transition-all-smooth hover-scale 
+                              ${
+                                formData.auctionSubType === "silent"
+                                  ? "border-corporate-500 bg-corporate-50 dark:border-corporate-400 dark:bg-corporate-900/30"
+                                  : "border-gray-200 hover:border-corporate-200 dark:border-gray-700 dark:hover:border-corporate-700"
+                              }`}
+                            onClick={() => setFormData({ ...formData, auctionSubType: "silent" })}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h3 className="font-medium dark:text-gray-100">{t("silentAuction")}</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{t("silentAuctionDesc")}</p>
+                              </div>
+                              <div
+                                className={`w-5 h-5 rounded-full border transition-all-smooth ${
+                                  formData.auctionSubType === "silent"
+                                    ? "border-corporate-500 bg-corporate-500 dark:border-corporate-400 dark:bg-corporate-400"
+                                    : "border-gray-300 dark:border-gray-600"
+                                }`}
+                              >
+                                {formData.auctionSubType === "silent" && <CheckCircle className="w-5 h-5 text-white" />}
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                      {formData.auctionType === "reverse" && (
+                        <>
+                          <div
+                            className={`border rounded-lg p-4 cursor-pointer transition-all-smooth hover-scale 
+                              ${
+                                formData.auctionSubType === "sealed-bid"
+                                  ? "border-corporate-500 bg-corporate-50 dark:border-corporate-400 dark:bg-corporate-900/30"
+                                  : "border-gray-200 hover:border-corporate-200 dark:border-gray-700 dark:hover:border-corporate-700"
+                              }`}
+                            onClick={() => setFormData({ ...formData, auctionSubType: "sealed-bid" })}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h3 className="font-medium dark:text-gray-100">{t("sealedBidAuction")}</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{t("sealedBidAuctionDesc")}</p>
+                              </div>
+                              <div
+                                className={`w-5 h-5 rounded-full border transition-all-smooth ${
+                                  formData.auctionSubType === "sealed-bid"
+                                    ? "border-corporate-500 bg-corporate-500 dark:border-corporate-400 dark:bg-corporate-400"
+                                    : "border-gray-300 dark:border-gray-600"
+                                }`}
+                              >
+                                {formData.auctionSubType === "sealed-bid" && <CheckCircle className="w-5 h-5 text-white" />}
+                              </div>
+                            </div>
+                          </div>
+                          <div
+                            className={`border rounded-lg p-4 cursor-pointer transition-all-smooth hover-scale 
+                              ${
+                                formData.auctionSubType === "reverse-clock"
+                                  ? "border-corporate-500 bg-corporate-50 dark:border-corporate-400 dark:bg-corporate-900/30"
+                                  : "border-gray-200 hover:border-corporate-200 dark:border-gray-700 dark:hover:border-corporate-700"
+                              }`}
+                            onClick={() => setFormData({ ...formData, auctionSubType: "reverse-clock" })}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h3 className="font-medium dark:text-gray-100">{t("reverseClockAuction")}</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{t("reverseClockAuctionDesc")}</p>
+                              </div>
+                              <div
+                                className={`w-5 h-5 rounded-full border transition-all-smooth ${
+                                  formData.auctionSubType === "reverse-clock"
+                                    ? "border-corporate-500 bg-corporate-500 dark:border-corporate-400 dark:bg-corporate-400"
+                                    : "border-gray-300 dark:border-gray-600"
+                                }`}
+                              >
+                                {formData.auctionSubType === "reverse-clock" && <CheckCircle className="w-5 h-5 text-white" />}
+                              </div>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                    {hasError("auctionSubType") && <ErrorMessage message={getErrorMessage("auctionSubType")} />}
+                  </div>
 
                     <div className="space-y-4">
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -2428,63 +2632,267 @@ FOCUS: ${formData.auctionType === "reverse" ? "Emphasize specifications and requ
                 </div>
               </div>
             )}
+{/* Step 7: Reverse Auction Details */}
+{currentStep === 7 && formData.auctionType === "reverse" && (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{t("reverseDetails")}</h2>
+
+    {/* Product Name */}
+    <div>
+      <label htmlFor="productName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        {t("productName")} <span className="text-destructive-500">*</span>
+      </label>
+      <input
+        type="text"
+        id="productName"
+        className={`form-input ${hasError("productName") ? "border-destructive-500" : ""}`}
+        value={formData.productName || ""}
+        onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
+      />
+      {hasError("productName") && <ErrorMessage message={getErrorMessage("productName")} />}
+    </div>
+
+    {/* Product Description */}
+    <div>
+      <label htmlFor="productDescription" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        {t("productDescription")} <span className="text-destructive-500">*</span>
+      </label>
+      <textarea
+        id="productDescription"
+        rows={4}
+        className={`form-input ${hasError("productDescription") ? "border-destructive-500" : ""}`}
+        value={formData.productDescription || ""}
+        onChange={(e) => setFormData({ ...formData, productDescription: e.target.value })}
+      />
+      {hasError("productDescription") && <ErrorMessage message={getErrorMessage("productDescription")} />}
+    </div>
+
+    {/* Product Classification */}
+    <ProductClassification
+      categoryId={formData.categoryId}
+      subCategoryId={formData.subCategoryId}
+      attributes={formData.attributes || { condition: "" }} // Default empty condition
+      sku={formData.sku || ""}
+      brand={formData.brand || ""}
+      model={formData.model || ""}
+      onCategoryChange={(categoryId, subCategoryId) =>
+        setFormData((prev) => ({ ...prev, categoryId, subCategoryId }))
+      }
+      onAttributesChange={(attributes) => setFormData((prev) => ({ ...prev, attributes }))}
+      onSkuChange={(sku) => setFormData((prev) => ({ ...prev, sku }))}
+      onBrandChange={(brand) => setFormData((prev) => ({ ...prev, brand }))}
+      onModelChange={(model) => setFormData((prev) => ({ ...prev, model }))}
+    />
+    {hasError("categoryId") && <ErrorMessage message={getErrorMessage("categoryId")} />}
+    {hasError("subCategoryId") && <ErrorMessage message={getErrorMessage("subCategoryId")} />}
+    {hasError("attributes") && <ErrorMessage message={getErrorMessage("attributes")} />}
+    {hasError("sku") && <ErrorMessage message={getErrorMessage("sku")} />}
+    {hasError("brand") && <ErrorMessage message={getErrorMessage("brand")} />}
+    {hasError("model") && <ErrorMessage message={getErrorMessage("model")} />}
+
+    {/* Product Details (Lot Configuration like Step 2) */}
+    <div className="space-y-4 border-b pb-6 dark:border-gray-700">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        {t("lotConfiguration")}
+      </label>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div
+          className={`border rounded-lg p-4 cursor-pointer transition-all-smooth hover-scale 
+            ${
+              !formData.isMultiLot
+                ? "border-corporate-500 bg-corporate-50 dark:border-corporate-400 dark:bg-corporate-900/30"
+                : "border-gray-200 hover:border-corporate-200 dark:border-gray-700 dark:hover:border-corporate-700"
+            }`}
+          onClick={() => setFormData({ ...formData, isMultiLot: false })}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium dark:text-gray-100">{t("singleProduct")}</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t("singleProductDesc")}</p>
+            </div>
+            <div
+              className={`w-5 h-5 rounded-full border transition-all-smooth ${
+                !formData.isMultiLot
+                  ? "border-corporate-500 bg-corporate-500 dark:border-corporate-400 dark:bg-corporate-400"
+                  : "border-gray-300 dark:border-gray-600"
+              }`}
+            >
+              {!formData.isMultiLot && <CheckCircle className="w-5 h-5 text-white" />}
+            </div>
           </div>
         </div>
 
-        {/* Footer with Navigation Buttons */}
-        <div className="w-full bg-white dark:bg-gray-800 p-4 border-t dark:border-gray-700 flex justify-between items-center">
-          <button
-            type="button"
-            className="btn-secondary btn-md active-scale"
-            onClick={handleSaveDraft}
-            disabled={isLaunched}
-          >
-            {t("saveDraft")}
-          </button>
-
-          <div>
-            {currentStep > 1 && (
-              <button
-                type="button"
-                className="btn-secondary btn-md mr-2 active-scale"
-                onClick={handlePrevious}
-                disabled={isLaunched}
-              >
-                {t("previous")}
-              </button>
-            )}
-            {currentStep < 5 && (
-              <button
-                type="button"
-                className="btn-primary btn-md active-scale"
-                onClick={handleNext}
-                disabled={isLaunched}
-              >
-                {t("next")}
-              </button>
-            )}
-            {currentStep === 5 && (
-              <button
-                type="button"
-                className="btn-primary btn-md active-scale"
-                onClick={handleNext}
-                disabled={isLaunched}
-              >
-                {t("review")}
-              </button>
-            )}
-            {currentStep === 6 && (
-              <button
-                type="button"
-                className="btn-primary btn-md active-scale"
-                onClick={handleLaunchAuction}
-                disabled={isLaunched}
-              >
-                {t("launchAuction")}
-              </button>
-            )}
+        <div
+          className={`border rounded-lg p-4 cursor-pointer transition-all-smooth hover-scale 
+            ${
+              formData.isMultiLot
+                ? "border-corporate-500 bg-corporate-50 dark:border-corporate-400 dark:bg-corporate-900/30"
+                : "border-gray-200 hover:border-corporate-200 dark:border-gray-700 dark:hover:border-corporate-700"
+            }`}
+          onClick={() => setFormData({ ...formData, isMultiLot: true })}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium dark:text-gray-100">{t("multipleLots")}</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t("multipleLotsDesc")}</p>
+            </div>
+            <div
+              className={`w-5 h-5 rounded-full border transition-all-smooth ${
+                formData.isMultiLot
+                  ? "border-corporate-500 bg-corporate-500 dark:border-corporate-400 dark:bg-corporate-400"
+                  : "border-gray-300 dark:border-gray-600"
+              }`}
+            >
+              {formData.isMultiLot && <CheckCircle className="w-5 h-5 text-white" />}
+            </div>
           </div>
         </div>
+      </div>
+      {formData.isMultiLot && (
+        <LotManager
+          lots={formData.lots}
+          onChange={(lots) => setFormData({ ...formData, lots })}
+          currency={formData.currency}
+        />
+      )}
+    </div>
+
+    {/* Target Price with Currency Selector */}
+    <div>
+      <label htmlFor="targetPrice" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        {t("Target Price")} <span className="text-destructive-500">*</span>
+      </label>
+      <div className="flex space-x-2">
+        <select
+          id="currency"
+          className="form-select w-1/4"
+          value={formData.currency}
+          onChange={(e) => setFormData({ ...formData, currency: e.target.value as Currency })}
+        >
+          <option value="USD">USD</option>
+          <option value="EUR">EUR</option>
+          <option value="GBP">GBP</option>
+          <option value="PKR">PKR</option>
+        </select>
+        <div className="relative rounded-md shadow-sm w-3/4">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <span className="text-gray-500 dark:text-gray-400 sm:text-sm">
+              {getCurrencySymbol(formData.currency)}
+            </span>
+          </div>
+          <input
+            type="number"
+            id="targetPrice"
+            className={`form-input pl-7 w-full ${hasError("targetPrice") ? "border-destructive-500" : ""}`}
+            value={formData.targetprice || ""}
+            onChange={(e) => setFormData({ ...formData, targetprice: Number(e.target.value) || null })}
+          />
+        </div>
+      </div>
+      {hasError("targetPrice") && <ErrorMessage message={getErrorMessage("targetPrice")} />}
+    </div>
+
+    {/* Required Documents */}
+    <div>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        {t("Required Documents")} <span className="text-destructive-500">*</span>
+      </label>
+      <Select
+        isMulti
+        options={requiredDocumentOptions}
+        value={(JSON.parse(formData.requireddocuments || "[]") as { name: string }[]).map((val) => ({
+          label: val.name,
+          value: val.name,
+        }))}
+        onChange={(selected: readonly Option[]) => {
+          const documents = selected.map((opt) => ({ name: opt.value }));
+          setFormData({
+            ...formData,
+            requireddocuments: JSON.stringify(documents),
+          });
+        }}
+        menuPortalTarget={document.body}
+        styles={{
+          menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+        }}
+      />
+      {hasError("requireddocuments") && <ErrorMessage message={getErrorMessage("requireddocuments")} />}
+    </div>
+
+    {/* Image Uploader (Using Step 2 Logic) */}
+    <div>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        {t("productImages")}
+      </label>
+      <FileUploader
+        accept="image/*"
+        type="image"
+        uploadedFiles={formData.productImages}
+        onFilesUploaded={handleImagesUploaded}
+        onFileRemoved={handleImageRemoved}
+      />
+      {hasError("productImages") && <ErrorMessage message={getErrorMessage("productImages")} />}
+    </div>
+  </div>
+)}
+</div>
+</div>
+
+{/* Footer with Navigation Buttons */}
+<div className="w-full bg-white dark:bg-gray-800 p-4 border-t dark:border-gray-700 flex justify-between items-center">
+  <button
+    type="button"
+    className="btn-secondary btn-md active-scale"
+    onClick={handleSaveDraft}
+    disabled={isLaunched}
+  >
+    {t("saveDraft")}
+  </button>
+
+  <div>
+    {currentStep > 1 && (
+      <button
+        type="button"
+        className="btn-secondary btn-md mr-2 active-scale"
+        onClick={handlePrevious}
+        disabled={isLaunched}
+      >
+        {t("previous")}
+      </button>
+    )}
+
+    {(
+      // Show "Next" for reverse on steps 1–5 and 7
+      (formData.auctionType === "reverse" && (currentStep < 6 || currentStep === 7)) ||
+      // Show "Next" for normal auctions on steps 1–5
+      (formData.auctionType !== "reverse" && currentStep < 6)
+    ) ? (
+      <button
+        type="button"
+        className="btn-primary btn-md active-scale"
+        onClick={handleNext}
+        disabled={isLaunched}
+      >
+        {
+          (formData.auctionType === "reverse" && currentStep === 5) ||
+          (formData.auctionType !== "reverse" && currentStep === 5)
+            ? t("review")
+            : t("next")
+        }
+      </button>
+    ) : (
+      // Show "Launch" on step 6 for both types
+      <button
+        type="button"
+        className="btn-primary btn-md active-scale"
+        onClick={handleLaunchAuction}
+        disabled={isLaunched}
+      >
+        {t("launchAuction")}
+      </button>
+    )}
+  </div>
+</div>
 
         {/* Launch Confirmation */}
         {isLaunched && (
