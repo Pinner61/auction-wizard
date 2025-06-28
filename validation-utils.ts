@@ -183,6 +183,31 @@ export function validateStep5(termsAndConditions: any[]): StepValidation {
     errors,
   }
 }
+// Validate Step 7: Reverse Auction Details
+export function validateStep7(targetPrice: number, requireddocuments: string): StepValidation {
+  const errors: ValidationError[] = []
+
+  // Target price must be a positive number
+  if (isNaN(targetPrice) || targetPrice <= 0) {
+    errors.push({
+      field: "targetPrice",
+      message: "Target price must be a number greater than zero",
+    })
+  }
+
+  // Required documents array must contain at least one entry
+if (!requireddocuments || requireddocuments.trim() === "") {
+  errors.push({
+    field: "requireddocuments",
+    message: "Please select at least one required document",
+  });
+}
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  }
+}
 
 // Validate email format
 export function isValidEmail(email: string): boolean {
