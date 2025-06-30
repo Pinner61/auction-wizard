@@ -1,15 +1,15 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useAuth } from "../auth/auth-provider"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import LiveAuctionRoom from "../bidding/live-auction-room"
-import ThemeToggle from "../../theme-toggle"
+import { useState, useEffect } from "react";
+import { useAuth } from "../auth/auth-provider";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import LiveAuctionRoom from "../bidding/live-auction-room";
+import ThemeToggle from "../../theme-toggle";
 import {
   Plus,
   Search,
@@ -25,27 +25,27 @@ import {
   AlertCircle,
   Play,
   Zap,
-} from "lucide-react"
+} from "lucide-react";
 
 interface AuctionItem {
-  id: string
-  title: string
-  description: string
-  auctionType: "forward" | "reverse"
-  auctionSubType: string
-  startPrice: number
-  currentBid?: number
-  currency: string
-  status: "draft" | "scheduled" | "live" | "ended" | "cancelled"
-  createdBy: string
-  createdByName: string
-  createdAt: string
-  scheduledStart?: string
-  endTime?: string
-  participantCount: number
-  bidCount: number
-  category: string
-  images: string[]
+  id: string;
+  title: string;
+  description: string;
+  auctionType: "forward" | "reverse";
+  auctionSubType: string;
+  startPrice: number;
+  currentBid?: number;
+  currency: string;
+  status: "draft" | "scheduled" | "live" | "ended" | "cancelled";
+  createdBy: string;
+  createdByName: string;
+  createdAt: string;
+  scheduledStart?: string;
+  endTime?: string;
+  participantCount: number;
+  bidCount: number;
+  category: string;
+  images: string[];
 }
 
 // Mock auction data - in production this would come from your database
@@ -127,34 +127,33 @@ const MOCK_AUCTIONS: AuctionItem[] = [
     category: "Industrial",
     images: ["/placeholder.svg?height=200&width=300&text=Industrial+Machinery"],
   },
-]
+];
 
 interface AuctionDashboardProps {
-  onCreateAuction: () => void
+  onCreateAuction: () => void;
 }
 
 export default function AuctionDashboard({ onCreateAuction }: AuctionDashboardProps) {
-  const { user } = useAuth()
-  const [auctions, setAuctions] = useState<AuctionItem[]>([])
-  const [filteredAuctions, setFilteredAuctions] = useState<AuctionItem[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [typeFilter, setTypeFilter] = useState<string>("all")
-  const [selectedAuctionId, setSelectedAuctionId] = useState<string | null>(null)
-      
+  const { user } = useAuth();
+  const [auctions, setAuctions] = useState<AuctionItem[]>([]);
+  const [filteredAuctions, setFilteredAuctions] = useState<AuctionItem[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [selectedAuctionId, setSelectedAuctionId] = useState<string | null>(null);
+
   // Fetch auctions from API
   useEffect(() => {
     const fetchAuctions = async () => {
       try {
-        const res = await fetch("/api/auctions")
-        const json = await res.json()
+        const res = await fetch("/api/auctions");
+        const json = await res.json();
         if (!json.success) {
-          setAuctions([])
-          setFilteredAuctions([])
-          return
+          setAuctions([]);
+          setFilteredAuctions([]);
+          return;
         }
         // Map DB fields to AuctionItem interface
-        
         const mapped: AuctionItem[] = (json.data.auctions || []).map((a: any) => ({
           id: a.id,
           title: a.productname || a.title || "Untitled Auction",
@@ -176,26 +175,26 @@ export default function AuctionDashboard({ onCreateAuction }: AuctionDashboardPr
           category: a.categoryid || "",
           images: Array.isArray(a.productimages)
             ? a.productimages
-            : (Array.isArray(a.productimages?.urls) ? a.productimages.urls : []),
-        }))
+            : Array.isArray(a.productimages?.urls) ? a.productimages.urls : [],
+        }));
         // For non-admin users, filter to only show their own auctions
-        let userAuctions = mapped
+        let userAuctions = mapped;
         if (user?.role !== "admin") {
-          userAuctions = mapped.filter((auction:any) => auction?.createdBy === user?.email)
+          userAuctions = mapped.filter((auction: any) => auction?.createdBy === user?.email);
         }
-        setAuctions(userAuctions)
-        setFilteredAuctions(userAuctions)
+        setAuctions(userAuctions);
+        setFilteredAuctions(userAuctions);
       } catch (e) {
-        setAuctions([])
-        setFilteredAuctions([])
+        setAuctions([]);
+        setFilteredAuctions([]);
       }
-    }
-    fetchAuctions()
-  }, [user])
+    };
+    fetchAuctions();
+  }, [user]);
 
   useEffect(() => {
     // Apply filters
-    let filtered = auctions
+    let filtered = auctions;
 
     if (searchTerm) {
       filtered = filtered.filter(
@@ -203,57 +202,57 @@ export default function AuctionDashboard({ onCreateAuction }: AuctionDashboardPr
           auction.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           auction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
           auction.category.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
+      );
     }
 
     if (statusFilter !== "all") {
-      filtered = filtered.filter((auction) => auction.status === statusFilter)
+      filtered = filtered.filter((auction) => auction.status === statusFilter);
     }
 
     if (typeFilter !== "all") {
-      filtered = filtered.filter((auction) => auction.auctionType === typeFilter)
+      filtered = filtered.filter((auction) => auction.auctionType === typeFilter);
     }
 
-    setFilteredAuctions(filtered)
-  }, [auctions, searchTerm, statusFilter, typeFilter])
+    setFilteredAuctions(filtered);
+  }, [auctions, searchTerm, statusFilter, typeFilter]);
 
   // If viewing a live auction, show the auction room
   if (selectedAuctionId) {
-    return <LiveAuctionRoom auctionId={selectedAuctionId} onBack={() => setSelectedAuctionId(null)} />
+    return <LiveAuctionRoom auctionId={selectedAuctionId} onBack={() => setSelectedAuctionId(null)} />;
   }
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "live":
-        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
       case "scheduled":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+        return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300";
       case "ended":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300"
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300";
       case "cancelled":
-        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
       default:
-        return "bg-yellow-100 text-yellow-800 dark:text-yellow-900/30 dark:text-yellow-300"
+        return "bg-yellow-100 text-yellow-800 dark:text-yellow-900/30 dark:text-yellow-300";
     }
-  }
+  };
 
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
       currency: currency,
-    }).format(amount)
-  }
+    }).format(amount);
+  };
 
   const formatDate = (dateString: string) => {
-    if (!dateString) return ""
+    if (!dateString) return "";
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    })
-  }
+    });
+  };
 
   // Calculate dashboard statistics
   const stats = {
@@ -262,7 +261,7 @@ export default function AuctionDashboard({ onCreateAuction }: AuctionDashboardPr
     scheduled: auctions.filter((a) => a.status === "scheduled").length,
     ended: auctions.filter((a) => a.status === "ended").length,
     totalValue: auctions.reduce((sum, a) => sum + (a.currentBid || a.startPrice), 0),
-  }
+  };
 
   if (user?.role === "seller" && auctions.length === 0) {
     // Show create auction prompt for auctioneers with no auctions
@@ -283,24 +282,24 @@ export default function AuctionDashboard({ onCreateAuction }: AuctionDashboardPr
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="space-y-6">
       {/* Dashboard Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-  <div>
-    <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-      {user?.role === "admin" ? "All Auctions" : "My Auctions"}
-    </h1>
-    <p className="text-gray-600 dark:text-gray-400">
-      {user?.role === "admin"
-        ? "Manage and monitor all auctions across the platform"
-        : "Manage your auction listings and track performance"}
-    </p>
-  </div>
-</div>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            {user?.role === "admin" ? "All Auctions" : "My Auctions"}
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            {user?.role === "admin"
+              ? "Manage and monitor all auctions across the platform"
+              : "Manage your auction listings and track performance"}
+          </p>
+        </div>
+      </div>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -486,7 +485,7 @@ export default function AuctionDashboard({ onCreateAuction }: AuctionDashboardPr
                         {auction.currentBid ? "Current Bid" : "Starting Price"}
                       </span>
                       <span className="font-semibold text-corporate-600 dark:text-corporate-400">
-                        {formatCurrency(auction.currentBid || auction.startPrice, auction.currency)}
+                        {auction.bidCount > 0 ? formatCurrency(auction.currentBid || auction.startPrice, auction.currency) : "N/A"}
                       </span>
                     </div>
 
@@ -539,5 +538,5 @@ export default function AuctionDashboard({ onCreateAuction }: AuctionDashboardPr
         </div>
       )}
     </div>
-  )
+  );
 }
