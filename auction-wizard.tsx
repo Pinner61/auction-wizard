@@ -1297,6 +1297,21 @@ return (
                               <h3 className="font-medium dark:text-gray-100">{t("sealedBidAuction")}</h3>
                               <p className="text-sm text-gray-500 dark:text-gray-400">{t("sealedBidAuctionDesc")}</p>
                             </div>
+                            <div
+                              className={`border rounded-lg p-4 cursor-pointer transition-all-smooth hover-scale 
+                                ${
+                                  formData.auctionSubType === "yankee"
+                                    ? "border-corporate-500 bg-corporate-50 dark:border-corporate-400 dark:bg-corporate-900/30"
+                                    : "border-gray-200 hover:border-corporate-200 dark:border-gray-700 dark:hover:border-corporate-700"
+                                } ${
+                                  hasError("auctionSubType") ? "border-destructive-500 dark:border-destructive-400" : ""
+                                }`}
+                              onClick={() => setFormData({ ...formData, auctionSubType: "yankee" })}
+                            >
+                              <h3 className="font-medium dark:text-gray-100">{t("yankeeAuction")}</h3>
+                              <p className="text-sm text-gray-500 dark:text-gray-400">{t("yankeeAuctionDesc")}</p>
+                            </div>
+                            
                           </>
                         ) : (
                           <>
