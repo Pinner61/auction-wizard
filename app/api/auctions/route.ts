@@ -175,12 +175,28 @@ async function createAuction(req: NextRequest, user: any): Promise<NextResponse>
 
     // Extract only URLs from productImages
     const productImageUrls = auctionData.productImages?.map((img) => img.url) || [];
+    const createdAt = new Date().toISOString();
+let scheduledstart: string;
+
+if (auctionData.launchType === "immediate") {
+  scheduledstart = createdAt;
+} else if (auctionData.scheduledStart) {
+  // If provided, use the scheduledstart from the client
+  scheduledstart = new Date(auctionData.scheduledStart).toISOString();
+} else {
+  return NextResponse.json(
+    { success: false, error: "Scheduled start time is required for scheduled auctions" },
+    { status: 400 }
+  );
+}
+
 
     // Prepare auction data for insertion
     const newAuction = keysToLowerCase({
       id: auctionId,
       ...auctionData,
-      createdAt: new Date().toISOString(),
+      createdAt,
+      scheduledstart,
       status: auctionData.launchType === "immediate" ? "active" : "scheduled",
       currentBid: auctionData.auctionType === "reverse" ? auctionData.targetprice : auctionData.startPrice, // For reverse, start at targetprice
       bidCount: 0,
