@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import LiveAuctionRoom from "../bidding/live-auction-room";
 import ThemeToggle from "../../theme-toggle";
+import { CheckCircle, XCircle } from "lucide-react";
 import {
   Plus,
   Search,
@@ -46,6 +47,7 @@ interface AuctionItem {
   bidCount: number;
   category: string;
   images: string[];
+  approved?: boolean;
 }
 
 // Mock auction data - in production this would come from your database
@@ -69,6 +71,7 @@ const MOCK_AUCTIONS: AuctionItem[] = [
     bidCount: 47,
     category: "Art & Collectibles",
     images: ["/placeholder.svg?height=200&width=300&text=Vintage+Art+Collection"],
+    approved: true,
   },
   {
     id: "auction-2",
@@ -89,6 +92,7 @@ const MOCK_AUCTIONS: AuctionItem[] = [
     bidCount: 0,
     category: "Business Equipment",
     images: ["/placeholder.svg?height=200&width=300&text=Office+Equipment"],
+    approved: false,
   },
   {
     id: "auction-3",
@@ -106,6 +110,7 @@ const MOCK_AUCTIONS: AuctionItem[] = [
     bidCount: 0,
     category: "Luxury Goods",
     images: ["/placeholder.svg?height=200&width=300&text=Luxury+Watches"],
+    approved: false,
   },
   {
     id: "auction-4",
@@ -126,6 +131,7 @@ const MOCK_AUCTIONS: AuctionItem[] = [
     bidCount: 89,
     category: "Industrial",
     images: ["/placeholder.svg?height=200&width=300&text=Industrial+Machinery"],
+    approved: true,
   },
 ];
 
@@ -141,12 +147,14 @@ export default function AuctionDashboard({ onCreateAuction }: AuctionDashboardPr
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [selectedAuctionId, setSelectedAuctionId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
 
   // Fetch auctions from API
   useEffect(() => {
     const fetchAuctions = async () => {
       try {
-        const res = await fetch("/api/auctions");
+        const res = await fetch("/api/auctions"); // Fetch all auctions
         const json = await res.json();
         if (!json.success) {
           setAuctions([]);
@@ -176,6 +184,7 @@ export default function AuctionDashboard({ onCreateAuction }: AuctionDashboardPr
           images: Array.isArray(a.productimages)
             ? a.productimages
             : Array.isArray(a.productimages?.urls) ? a.productimages.urls : [],
+          approved: a.approved || false,
         }));
         // For non-admin users, filter to only show their own auctions
         let userAuctions = mapped;
@@ -214,6 +223,7 @@ export default function AuctionDashboard({ onCreateAuction }: AuctionDashboardPr
     }
 
     setFilteredAuctions(filtered);
+    setCurrentPage(1); // Reset to first page when filters change
   }, [auctions, searchTerm, statusFilter, typeFilter]);
 
   // If viewing a live auction, show the auction room
@@ -254,6 +264,48 @@ export default function AuctionDashboard({ onCreateAuction }: AuctionDashboardPr
     });
   };
 
+  const handleApprove = async (auctionId: string) => {
+    try {
+      const response = await fetch(`/api/auctions/${auctionId}`, {
+        method: "PUT",
+      });
+      if (response.ok) {
+        setAuctions((prev) =>
+          prev.map((auction) =>
+            auction.id === auctionId ? { ...auction, approved: true } : auction
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Failed to approve auction:", error);
+    }
+  };
+
+  const handleDelete = async (auctionId: string) => {
+    try {
+      const response = await fetch(`/api/auctions/${auctionId}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        setAuctions((prev) => prev.filter((auction) => auction.id !== auctionId));
+        setFilteredAuctions((prev) => prev.filter((auction) => auction.id !== auctionId));
+      }
+    } catch (error) {
+      console.error("Failed to delete auction:", error);
+    }
+
+  };
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredAuctions.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedAuctions = filteredAuctions.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
   // Calculate dashboard statistics
   const stats = {
     total: auctions.length,
@@ -264,7 +316,6 @@ export default function AuctionDashboard({ onCreateAuction }: AuctionDashboardPr
   };
 
   if (user?.role === "seller" && auctions.length === 0) {
-    // Show create auction prompt for auctioneers with no auctions
     return (
       <div className="space-y-6">
         <div className="text-center py-12">
@@ -416,126 +467,186 @@ export default function AuctionDashboard({ onCreateAuction }: AuctionDashboardPr
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAuctions.map((auction) => (
-            <Card key={auction.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-              <div className="aspect-video relative">
-                <img
-                  src={auction.images[0] || "/placeholder.svg"}
-                  alt={auction.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute top-4 left-4">
-                  <Badge className={getStatusColor(auction.status)}>
-                    {auction.status === "live" && <Zap className="w-3 h-3 mr-1" />}
-                    {auction.status.charAt(0).toUpperCase() + auction.status.slice(1)}
-                  </Badge>
-                </div>
-                <div className="absolute top-4 right-4">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="secondary" size="sm" className="bg-white/90 hover:bg-white">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setSelectedAuctionId(auction.id)}>
-                        <Eye className="w-4 h-4 mr-2" />
-                        View Details
-                      </DropdownMenuItem>
-                      {auction.status === "live" && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {paginatedAuctions.map((auction) => (
+              <Card key={auction.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                <div className="aspect-video relative">
+                  <img
+                    src={auction.images[0] || "/placeholder.svg"}
+                    alt={auction.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-4 left-4">
+                    <Badge className={getStatusColor(auction.status)}>
+                      {auction.status === "live" && <Zap className="w-3 h-3 mr-1" />}
+                      {auction.status.charAt(0).toUpperCase() + auction.status.slice(1)}
+                    </Badge>
+                  </div>
+                  <div className="absolute top-4 right-4">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="secondary" size="sm" className="bg-white/90 hover:bg-white">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => setSelectedAuctionId(auction.id)}>
-                          <Play className="w-4 h-4 mr-2" />
-                          Join Live Auction
+                          <Eye className="w-4 h-4 mr-2" />
+                          View Details
                         </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem>
-                        <Edit className="w-4 h-4 mr-2" />
-                        Edit Auction
-                      </DropdownMenuItem>
-                      {user?.role === "admin" && (
-                        <DropdownMenuItem className="text-red-600">
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete Auction
+                        {auction.status === "live" && (
+                          <DropdownMenuItem onClick={() => setSelectedAuctionId(auction.id)}>
+                            <Play className="w-4 h-4 mr-2" />
+                            Join Live Auction
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem>
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit Auction
                         </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        {user?.role === "admin" && (
+                          <>
+{auction.approved === false && (
+  <>
+    <DropdownMenuItem asChild>
+      <Button
+        variant="ghost"
+        className="w-full justify-start text-blue-600 hover:text-blue-700"
+        onClick={() => handleApprove(auction.id)}
+      >
+        <CheckCircle className="w-4 h-4 mr-2" />
+        Approve
+      </Button>
+    </DropdownMenuItem>
+
+    <DropdownMenuItem asChild>
+      <Button
+        variant="ghost"
+        className="w-full justify-start text-black hover:text-gray-700"
+        onClick={() => handleDelete(auction.id)}
+      >
+        <XCircle className="w-4 h-4 mr-2" />
+        Reject
+      </Button>
+    </DropdownMenuItem>
+  </>
+)}
+
+{auction.approved === true && (
+  <DropdownMenuItem asChild>
+    <Button
+      variant="ghost"
+      className="w-full justify-start text-red-600 hover:text-red-700"
+      onClick={() => handleDelete(auction.id)}
+    >
+      <Trash2 className="w-4 h-4 mr-2" />
+      Delete Auction
+    </Button>
+  </DropdownMenuItem>
+)}
+
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
-              </div>
 
-              <CardContent className="p-4">
-                <div className="space-y-3">
-                  <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 line-clamp-1">{auction.title}</h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{auction.description}</p>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-400">
-                      {auction.auctionType.charAt(0).toUpperCase() + auction.auctionType.slice(1)} •{" "}
-                      {auction.auctionSubType}
-                    </span>
-                    <span className="text-gray-600 dark:text-gray-400">{auction.category}</span>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {auction.currentBid ? "Current Bid" : "Starting Price"}
-                      </span>
-                      <span className="font-semibold text-corporate-600 dark:text-corporate-400">
-                        {auction.bidCount > 0 ? formatCurrency(auction.currentBid || auction.startPrice, auction.currency) : "N/A"}
-                      </span>
+                <CardContent className="p-4">
+                  <div className="space-y-3">
+                    <div>
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 line-clamp-1">{auction.title}</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{auction.description}</p>
                     </div>
 
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">Participants</span>
-                      <span className="font-medium">{auction.participantCount}</span>
+                      <span className="text-gray-600 dark:text-gray-400">
+                        {auction.auctionType.charAt(0).toUpperCase() + auction.auctionType.slice(1)} •{" "}
+                        {auction.auctionSubType}
+                      </span>
+                      <span className="text-gray-600 dark:text-gray-400">{auction.category}</span>
                     </div>
 
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">Bids</span>
-                      <span className="font-medium">{auction.bidCount}</span>
-                    </div>
-                  </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          {auction.currentBid ? "Current Bid" : "Starting Price"}
+                        </span>
+                        <span className="font-semibold text-corporate-600 dark:text-corporate-400">
+                          {auction.bidCount > 0 ? formatCurrency(auction.currentBid || auction.startPrice, auction.currency) : "N/A"}
+                        </span>
+                      </div>
 
-                  {/* Live Auction Action Button */}
-                  {auction.status === "live" && (
-                    <Button
-                      onClick={() => setSelectedAuctionId(auction.id)}
-                      className="w-full bg-green-600 hover:bg-green-700 text-white"
-                      size="sm"
-                    >
-                      <Play className="w-4 h-4 mr-2" />
-                      Join Live Auction
-                    </Button>
-                  )}
-
-                  {user?.role === "admin" && (
-                    <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600 dark:text-gray-400">Created by</span>
-                        <span className="font-medium">{auction.createdByName}</span>
+                        <span className="text-gray-600 dark:text-gray-400">Participants</span>
+                        <span className="font-medium">{auction.participantCount}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-600 dark:text-gray-400">Bids</span>
+                        <span className="font-medium">{auction.bidCount}</span>
                       </div>
                     </div>
-                  )}
 
-                  <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-                    <div className="text-xs text-gray-500 dark:text-gray-500">
-                      Created: {formatDate(auction.createdAt)}
-                    </div>
-                    {auction.scheduledStart && (
-                      <div className="text-xs text-gray-500 dark:text-gray-500">
-                        {auction.status === "scheduled" ? "Starts" : "Started"}: {formatDate(auction.scheduledStart)}
+                    {/* Live Auction Action Button */}
+                    {auction.status === "live" && (
+                      <Button
+                        onClick={() => setSelectedAuctionId(auction.id)}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                        size="sm"
+                      >
+                        <Play className="w-4 h-4 mr-2" />
+                        Join Live Auction
+                      </Button>
+                    )}
+
+                    {user?.role === "admin" && (
+                      <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">Created by</span>
+                          <span className="font-medium">{auction.createdByName}</span>
+                        </div>
                       </div>
                     )}
+
+                    <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                      <div className="text-xs text-gray-500 dark:text-gray-500">
+                        Created: {formatDate(auction.createdAt)}
+                      </div>
+                      {auction.scheduledStart && (
+                        <div className="text-xs text-gray-500 dark:text-gray-500">
+                          {auction.status === "scheduled" ? "Starts" : "Started"}: {formatDate(auction.scheduledStart)}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="flex justify-center items-center gap-4 mt-4">
+            <Button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              variant="outline"
+            >
+              Previous
+            </Button>
+            <span>
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              variant="outline"
+            >
+              Next
+            </Button>
+          </div>
+        </>
       )}
     </div>
   );
