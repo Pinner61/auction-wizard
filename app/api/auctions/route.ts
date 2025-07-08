@@ -33,7 +33,7 @@ async function getAuctions(req: NextRequest, user: any): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(req.url);
     const page = Number.parseInt(searchParams.get("page") || "1");
-    const limit = Number.parseInt(searchParams.get("limit") || "10");
+    const limit = Number.parseInt(searchParams.get("limit") || "10000");
     const category = searchParams.get("category");
     const status = searchParams.get("status");
     const auctionType = searchParams.get("auctionType");
@@ -200,6 +200,7 @@ if (auctionData.launchType === "immediate") {
       status: auctionData.launchType === "immediate" ? "active" : "scheduled",
       currentBid: auctionData.auctionType === "reverse" ? auctionData.targetprice : auctionData.startPrice, // For reverse, start at targetprice
       bidCount: 0,
+      approved: false,
       participants: [],
       productimages: productImageUrls,
       productImages: undefined,
@@ -238,6 +239,10 @@ const authenticatedCreateAuction = withAuth(createAuction, "create_auction");
 
 // export const GET = withRateLimit(authenticatedGetAuctions);
 // export const POST = withRateLimit(authenticatedCreateAuction);
+
+// PUT /api/auctions/:id - Approve auction and optionally update scheduledstart
+
+
 
 export const GET = getAuctions;
 export const POST = createAuction;
