@@ -99,7 +99,7 @@ export default function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProp
     }
 
     // Check if role is "seller" or "both"
-    const allowedRoles = ["seller", "both"];
+    const allowedRoles = ["seller", "both", "admin"];
     if (!allowedRoles.includes(userTypeData.role.toLowerCase())) {
       setError("Access denied. Only sellers or accounts with both roles can log in to this portal.");
       setIsLoading(false);
