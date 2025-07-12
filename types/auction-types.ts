@@ -1,7 +1,7 @@
 // Define types for our enhanced auction platform
 export type AuctionType = "forward" | "reverse"
 
-export type ForwardAuctionSubType = "english" | "dutch" | "sealed" | "multi-round" | "silent"
+export type ForwardAuctionSubType = "english" | "dutch" | "sealed" | "multi-round" | "silent" | "yankee"
 export type ReverseAuctionSubType =
   | "standard"
   | "japanese"
@@ -160,6 +160,7 @@ export interface AuctionFormData {
   enableNotifications: boolean
   notificationTypes: string[]
   enableAnalytics: boolean
+  productQuantity?: number // For multi-lot auctions
 }
 // New types for API authentication
 export interface ApiResponse<T = any> {
