@@ -133,6 +133,7 @@ const defaultFormData: AuctionFormData = {
   // Step 7: Reverse Auction Details (new fields)
   targetprice: undefined, // Numeric field for reverse auctions
   requireddocuments: "[]", // Array for required documents
+  productQuantity: 1, // For multi-lot auctions
 };
 
 interface AuctionWizardContentProps {
@@ -287,7 +288,7 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
             }
           }
         } else {
-          stepValidation = validateStep3(formData.productName, formData.productDescription);
+          stepValidation = validateStep3(formData.productName, formData.productDescription,formData.auctionSubType,formData.productQuantity);
           // Also validate category selection
           if (!formData.categoryId) {
             stepValidation.errors.push({
@@ -309,7 +310,9 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
           formData.launchType,
           formData.scheduledStart,
           formData.bidExtension,
-          formData.bidExtensionTime
+          formData.bidExtensionTime,
+          formData.auctionSubType, // Added for auction sub-type validation
+          formData.productQuantity // Added for multi-lot auctions
         );
         break;
       case 4:
@@ -480,7 +483,9 @@ const handlePrevious = () => {
       formData.launchType,
       formData.scheduledStart,
       formData.bidExtension,
-      formData.bidExtensionTime
+      formData.bidExtensionTime,
+      formData.auctionSubType, // Added for auction sub-type validation
+      formData.productQuantity // Added for multi-lot auctions
     );
     if (!step2Validation.isValid) {
       allValid = false;
@@ -501,7 +506,7 @@ const handlePrevious = () => {
         }
       }
     } else {
-      const step3Validation = validateStep3(formData.productName, formData.productDescription);
+      const step3Validation = validateStep3(formData.productName, formData.productDescription, formData.auctionSubType, formData.productQuantity);
       if (!step3Validation.isValid) {
         allValid = false;
         allErrors.push(...step3Validation.errors);
@@ -1525,6 +1530,36 @@ return (
                       />
                       {hasError("productName") && <ErrorMessage message={getErrorMessage("productName")} />}
                     </div>
+                                            {formData.auctionSubType === "yankee" && (
+  <div>
+    <label
+      htmlFor="productQuantity"
+      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+    >
+      Quantity <span className="text-destructive-500">*</span>
+    </label>
+    <input
+      type="number"
+      id="productQuantity"
+      min={1}
+      className={`form-input ${
+        hasError("productQuantity")
+          ? "border-destructive-500 dark:border-destructive-400 focus:border-destructive-500 dark:focus:border-destructive-400 focus:ring-destructive-500/20 dark:focus:ring-destructive-400/20"
+          : ""
+      }`}
+      placeholder="Enter quantity"
+      value={formData.productQuantity || ""}
+      onChange={(e) =>
+        setFormData({
+          ...formData,
+          productQuantity: e.target.value === "" ? undefined : parseInt(e.target.value),
+        })
+      }
+    />
+    {hasError("productQuantity") && <ErrorMessage message={getErrorMessage("productQuantity")} />}
+  </div>
+)}
+
 
                     <div>
                       <div className="flex items-center justify-between mb-1">
@@ -1782,503 +1817,505 @@ return (
             )}
 
             {/* Step 3: Bidding Parameters */}
-            {currentStep === 3 && (
-              <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{t("biddingParameters")}</h2>
+{currentStep === 3 && (
+  <div className="space-y-6">
+    <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100">{t("biddingParameters")}</h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label
-                      htmlFor="startPrice"
-                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                    >
-                      {t("startPrice")} <span className="text-destructive-500">*</span>
-                    </label>
-                    <div className="relative rounded-md shadow-sm">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <span className="text-gray-500 dark:text-gray-400 sm:text-sm">
-                          {getCurrencySymbol(formData.currency)}
-                        </span>
-                      </div>
-                      <input
-                        type="number"
-                        id="startPrice"
-                        ref={startPriceRef}
-                        className={`form-input pl-7 pr-12 ${
-                          hasError("startPrice")
-                            ? "border-destructive-500 dark:border-destructive-400 focus:border-destructive-500 dark:focus:border-destructive-400 focus:ring-destructive-500/20 dark:focus:ring-destructive-400/20"
-                            : ""
-                        }`}
-                        placeholder="0.00"
-                        value={formData.startPrice}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            startPrice: Number.parseFloat(e.target.value) || 0,
-                          }))
-                        }
-                      />
-                      <div className="absolute inset-y-0 right-0 flex items-center">
-                        <select
-                          id="currency"
-                          name="currency"
-                          className="form-select h-full py-0 pl-2 pr-7 border-transparent bg-transparent text-gray-500 dark:text-gray-400 sm:text-sm rounded-md"
-                          value={formData.currency}
-                          onChange={(e) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              currency: e.target.value as Currency,
-                            }))
-                          }
-                        >
-                          <option value="USD">USD</option>
-                          <option value="EUR">EUR</option>
-                          <option value="GBP">GBP</option>
-                          <option value="JPY">JPY</option>
-                          <option value="CAD">CAD</option>
-                          <option value="INR">INR</option>
-                          <option value="AUD">AUD</option>
-                          <option value="CNY">CNY</option>
-                        </select>
-                      </div>
-                    </div>
-                    {hasError("startPrice") && <ErrorMessage message={getErrorMessage("startPrice")} />}
-                  </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <label
+          htmlFor="startPrice"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+        >
+          {t("startPrice")}
+          <span className="text-destructive-500">*</span>
+        </label>
+        <div className="relative rounded-md shadow-sm">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <span className="text-gray-500 dark:text-gray-400 sm:text-sm">
+              {getCurrencySymbol(formData.currency)}
+            </span>
+          </div>
+          <input
+            type="number"
+            id="startPrice"
+            ref={startPriceRef}
+            className={`form-input pl-7 pr-12 ${
+              hasError("startPrice")
+                ? "border-destructive-500 dark:border-destructive-400 focus:border-destructive-500 dark:focus:border-destructive-400 focus:ring-destructive-500/20 dark:focus:ring-destructive-400/20"
+                : ""
+            }`}
+            placeholder="0.00"
+            value={formData.startPrice}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                startPrice: Number.parseFloat(e.target.value) || 0,
+              }))
+            }
+          />
+          <div className="absolute inset-y-0 right-0 flex items-center">
+            <select
+              id="currency"
+              name="currency"
+              className="form-select h-full py-0 pl-2 pr-7 border-transparent bg-transparent text-gray-500 dark:text-gray-400 sm:text-sm rounded-md"
+              value={formData.currency}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  currency: e.target.value as Currency,
+                }))
+              }
+            >
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="GBP">GBP</option>
+              <option value="JPY">JPY</option>
+              <option value="CAD">CAD</option>
+              <option value="INR">INR</option>
+              <option value="AUD">AUD</option>
+              <option value="CNY">CNY</option>
+            </select>
+          </div>
+        </div>
+        {hasError("startPrice") && <ErrorMessage message={getErrorMessage("startPrice")} />}
+      </div>
 
-                  <div>
-                    <label
-                      htmlFor="minimumIncrement"
-                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                    >
-                      {t("minimumBidIncrement")} <span className="text-destructive-500">*</span>
-                    </label>
-                    <div className="relative rounded-md shadow-sm">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <span className="text-gray-500 dark:text-gray-400 sm:text-sm">
-                          {getCurrencySymbol(formData.currency)}
-                        </span>
-                      </div>
-                      <input
-                        type="number"
-                        id="minimumIncrement"
-                        ref={minimumIncrementRef}
-                        className={`form-input pl-7 pr-12 ${
-                          hasError("minimumIncrement")
-                            ? "border-destructive-500 dark:border-destructive-400 focus:border-destructive-500 dark:focus:border-destructive-400 focus:ring-destructive-500/20 dark:focus:ring-destructive-400/20"
-                            : ""
-                        }`}
-                        placeholder="0.00"
-                        value={formData.minimumIncrement}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            minimumIncrement: Number.parseFloat(e.target.value) || 0,
-                          }))
-                        }
-                      />
-                    </div>
-                    {hasError("minimumIncrement") && <ErrorMessage message={getErrorMessage("minimumIncrement")} />}
-                  </div>
-                </div>
+      {formData.auctionSubType !== "yankee" && (
+        <div>
+          <label
+            htmlFor="minimumIncrement"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          >
+            {t("minimumBidIncrement")}
+            <span className="text-destructive-500">*</span>
+          </label>
+          <div className="relative rounded-md shadow-sm">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <span className="text-gray-500 dark:text-gray-400 sm:text-sm">
+                {getCurrencySymbol(formData.currency)}
+              </span>
+            </div>
+            <input
+              type="number"
+              id="minimumIncrement"
+              ref={minimumIncrementRef}
+              className={`form-input pl-7 pr-12 ${
+                hasError("minimumIncrement")
+                  ? "border-destructive-500 dark:border-destructive-400 focus:border-destructive-500 dark:focus:border-destructive-400 focus:ring-destructive-500/20 dark:focus:ring-destructive-400/20"
+                  : ""
+              }`}
+              placeholder="0.00"
+              value={formData.minimumIncrement}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  minimumIncrement: Number.parseFloat(e.target.value) || 0,
+                }))
+              }
+            />
+          </div>
+          {hasError("minimumIncrement") && <ErrorMessage message={getErrorMessage("minimumIncrement")} />}
+        </div>
+      )}
+    </div>
 
-                {/* Bid Increment Configuration */}
-                <BidIncrementConfig
-  bidIncrementType={formData.bidIncrementType}
-  bidIncrementRules={formData.bidIncrementRules}
-  currency={formData.currency}
-  onIncrementTypeChange={(type) =>
-    setFormData((prev) => {
-      let updatedMinimumIncrement = prev.minimumIncrement;
-      let updatedPercent = prev.percent;
-      if (type === "percentage") {
-        updatedPercent = prev.bidIncrementRules[0]?.incrementValue || 5; // Default to 5%
-        // Preserve minimumIncrement unless it’s 0 or unchanged
-        if (prev.minimumIncrement === 0 || prev.bidIncrementType !== "fixed") {
-          updatedMinimumIncrement = 1;
+    {formData.auctionSubType !== "yankee" && (
+      <BidIncrementConfig
+        bidIncrementType={formData.bidIncrementType}
+        bidIncrementRules={formData.bidIncrementRules}
+        currency={formData.currency}
+        onIncrementTypeChange={(type) =>
+          setFormData((prev) => {
+            let updatedMinimumIncrement = prev.minimumIncrement;
+            let updatedPercent = prev.percent;
+            if (type === "percentage") {
+              updatedPercent = prev.bidIncrementRules[0]?.incrementValue || 5; // Default to 5%
+              if (prev.minimumIncrement === 0 || prev.bidIncrementType !== "fixed") {
+                updatedMinimumIncrement = 1;
+              }
+            } else if (type === "fixed") {
+              updatedMinimumIncrement = prev.bidIncrementRules[0]?.incrementValue || 0;
+              updatedPercent = null;
+            }
+            return {
+              ...prev,
+              bidIncrementType: type,
+              minimumIncrement: updatedMinimumIncrement,
+              percent: updatedPercent,
+            };
+          })
         }
-      } else if (type === "fixed") {
-        updatedMinimumIncrement = prev.bidIncrementRules[0]?.incrementValue || 0;
-        updatedPercent = null;
-      }
-      return {
-        ...prev,
-        bidIncrementType: type,
-        minimumIncrement: updatedMinimumIncrement,
-        percent: updatedPercent,
-      };
-    })
-  }
-  onRulesChange={(rules) =>
-    setFormData((prev) => {
-      let updatedMinimumIncrement = prev.minimumIncrement;
-      let updatedPercent = prev.percent;
-      if (prev.bidIncrementType === "percentage" && rules[0]?.incrementValue) {
-        updatedPercent = rules[0].incrementValue; // Update percent
-        // Preserve minimumIncrement unless it was 0 or type changed
-        if (prev.minimumIncrement === 0 || prev.bidIncrementType !== "fixed") {
-          updatedMinimumIncrement = 1;
+        onRulesChange={(rules) =>
+          setFormData((prev) => {
+            let updatedMinimumIncrement = prev.minimumIncrement;
+            let updatedPercent = prev.percent;
+            if (prev.bidIncrementType === "percentage" && rules[0]?.incrementValue) {
+              updatedPercent = rules[0].incrementValue;
+              if (prev.minimumIncrement === 0 || prev.bidIncrementType !== "fixed") {
+                updatedMinimumIncrement = 1;
+              }
+            } else if (prev.bidIncrementType === "fixed" && rules[0]?.incrementValue) {
+              updatedMinimumIncrement = rules[0].incrementValue;
+              updatedPercent = null;
+            }
+            return {
+              ...prev,
+              bidIncrementRules: rules,
+              minimumIncrement: updatedMinimumIncrement,
+              percent: updatedPercent,
+            };
+          })
         }
-      } else if (prev.bidIncrementType === "fixed" && rules[0]?.incrementValue) {
-        updatedMinimumIncrement = rules[0].incrementValue;
-        updatedPercent = null;
-      }
-      return {
-        ...prev,
-        bidIncrementRules: rules,
-        minimumIncrement: updatedMinimumIncrement,
-        percent: updatedPercent,
-      };
-    })
-  }
-/>
+      />
+    )}
 
-                <div className="space-y-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {t("auctionDuration")} <span className="text-destructive-500">*</span>
-                  </label>
-                  <div
-                    className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${
-                      hasError("auctionDuration")
-                        ? "border border-destructive-500 dark:border-destructive-400 p-3 rounded-md"
-                        : ""
-                    }`}
-                  >
-                    <div>
-                      <label htmlFor="days" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                        {t("days")}
-                      </label>
-                      <input
-                        type="number"
-                        id="days"
-                        ref={daysRef}
-                        min="0"
-                        max="30"
-                        className="form-input"
-                        value={formData.auctionDuration.days}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            auctionDuration: {
-                              ...prev.auctionDuration,
-                              days: Number.parseInt(e.target.value) || 0,
-                            },
-                          }))
-                        }
-                      />
-                    </div>
+    <div className="space-y-4">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        {t("auctionDuration")} <span className="text-destructive-500">*</span>
+      </label>
+      <div
+        className={`grid grid-cols-1 md:grid-cols-3 gap-4 ${
+          hasError("auctionDuration")
+            ? "border border-destructive-500 dark:border-destructive-400 p-3 rounded-md"
+            : ""
+        }`}
+      >
+        <div>
+          <label htmlFor="days" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+            {t("days")}
+          </label>
+          <input
+            type="number"
+            id="days"
+            ref={daysRef}
+            min="0"
+            max="30"
+            className="form-input"
+            value={formData.auctionDuration.days}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                auctionDuration: {
+                  ...prev.auctionDuration,
+                  days: Number.parseInt(e.target.value) || 0,
+                },
+              }))
+            }
+          />
+        </div>
 
-                    <div>
-                      <label htmlFor="hours" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                        {t("hours")}
-                      </label>
-                      <input
-                        type="number"
-                        id="hours"
-                        min="0"
-                        max="23"
-                        className="form-input"
-                        value={formData.auctionDuration.hours}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            auctionDuration: {
-                              ...prev.auctionDuration,
-                              hours: Number.parseInt(e.target.value) || 0,
-                            },
-                          }))
-                        }
-                      />
-                    </div>
+        <div>
+          <label htmlFor="hours" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+            {t("hours")}
+          </label>
+          <input
+            type="number"
+            id="hours"
+            min="0"
+            max="23"
+            className="form-input"
+            value={formData.auctionDuration.hours}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                auctionDuration: {
+                  ...prev.auctionDuration,
+                  hours: Number.parseInt(e.target.value) || 0,
+                },
+              }))
+            }
+          />
+        </div>
 
-                    <div>
-                      <label htmlFor="minutes" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                        {t("minutes")}
-                      </label>
-                      <input
-                        type="number"
-                        id="minutes"
-                        min="0"
-                        max="59"
-                        className="form-input"
-                        value={formData.auctionDuration.minutes}
-                        onChange={(e) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            auctionDuration: {
-                              ...prev.auctionDuration,
-                              minutes: Number.parseInt(e.target.value) || 0,
-                            },
-                          }))
-                        }
-                      />
-                    </div>
-                  </div>
-                  {hasError("auctionDuration") && <ErrorMessage message={getErrorMessage("auctionDuration")} />}
+        <div>
+          <label htmlFor="minutes" className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+            {t("minutes")}
+          </label>
+          <input
+            type="number"
+            id="minutes"
+            min="0"
+            max="59"
+            className="form-input"
+            value={formData.auctionDuration.minutes}
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                auctionDuration: {
+                  ...prev.auctionDuration,
+                  minutes: Number.parseInt(e.target.value) || 0,
+                },
+              }))
+            }
+          />
+        </div>
+      </div>
+      {hasError("auctionDuration") && <ErrorMessage message={getErrorMessage("auctionDuration")} />}
 
-                  <div className="bg-corporate-50 dark:bg-corporate-900/30 p-4 rounded-md flex items-start animate-fade-in">
-                    <Clock className="w-5 h-5 text-corporate-500 dark:text-corporate-400 mt-0.5 mr-2 flex-shrink-0" />
-                    <p className="text-sm text-corporate-700 dark:text-corporate-300">
-                      {t("auctionWillRunFor")} {formData.auctionDuration.days} {t("days")},{" "}
-                      {formData.auctionDuration.hours} {t("hours")}, and {formData.auctionDuration.minutes}{" "}
-                      {t("minutes")} {t("afterLaunch")}.
-                    </p>
-                  </div>
+      <div className="bg-corporate-50 dark:bg-corporate-900/30 p-4 rounded-md flex items-start animate-fade-in">
+        <Clock className="w-5 h-5 text-corporate-500 dark:text-corporate-400 mt-0.5 mr-2 flex-shrink-0" />
+        <p className="text-sm text-corporate-700 dark:text-corporate-300">
+          {t("auctionWillRunFor")} {formData.auctionDuration.days} {t("days")}, {formData.auctionDuration.hours}{" "}
+          {t("hours")}, and {formData.auctionDuration.minutes} {t("minutes")} {t("afterLaunch")}.
+        </p>
+      </div>
+    </div>
+
+    {/* Anti-Sniping Controls */}
+    <div className="space-y-4 border-t pt-4 dark:border-gray-700">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        {t("antiSnipingControls")}
+      </label>
+      <div className="flex items-center">
+        <input
+          type="checkbox"
+          id="bidExtension"
+          className="form-checkbox"
+          checked={formData.bidExtension}
+          onChange={(e) =>
+            setFormData((prev) => ({
+              ...prev,
+              bidExtension: e.target.checked,
+            }))
+          }
+        />
+        <label htmlFor="bidExtension" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+          {t("enableBidExtension")}
+        </label>
+      </div>
+
+      {formData.bidExtension && (
+        <div className="ml-6 animate-fade-in">
+          <label htmlFor="bidExtensionTime" className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+            {t("extendAuctionIfBid")}
+          </label>
+          <div className="flex items-center">
+            <input
+              type="number"
+              id="bidExtensionTime"
+              min="1"
+              max="30"
+              className="form-input w-20"
+              value={formData.bidExtensionTime}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  bidExtensionTime: Number.parseInt(e.target.value) || 5,
+                }))
+              }
+            />
+            <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{t("minutes")}</span>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t("preventsLastSecondBidding")}</p>
+        </div>
+      )}
+    </div>
+
+    {/* Auto-Bidding */}
+    <div className="space-y-4 border-t pt-4 dark:border-gray-700">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        {t("automatedBidding")}
+      </label>
+      <div className="flex items-center">
+        <input
+          type="checkbox"
+          id="allowAutoBidding"
+          className="form-checkbox"
+          checked={formData.allowAutoBidding}
+          onChange={(e) =>
+            setFormData((prev) => ({
+              ...prev,
+              allowAutoBidding: e.target.checked,
+            }))
+          }
+        />
+        <label htmlFor="allowAutoBidding" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+          {t("allowParticipantsAutoBidding")}
+        </label>
+      </div>
+      <p className="text-xs text-gray-500 dark:text-gray-400">{t("participantsCanSetMaxBid")}</p>
+    </div>
+
+    {/* Reserve Price */}
+    <div className="space-y-4 border-t pt-4 dark:border-gray-700">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        {t("reservePrice")}
+      </label>
+      <div className="flex items-center">
+        <input
+          type="checkbox"
+          id="enableReservePrice"
+          className="form-checkbox"
+          checked={formData.reservePrice !== undefined}
+          onChange={(e) =>
+            setFormData((prev) => ({
+              ...prev,
+              reservePrice: e.target.checked ? 0 : undefined,
+            }))
+          }
+        />
+        <label htmlFor="enableReservePrice" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+          {t("setReservePrice")}
+        </label>
+      </div>
+
+      {formData.reservePrice !== undefined && (
+        <div className="ml-6 animate-fade-in">
+          <label htmlFor="reservePrice" className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+            {t("reservePrice")}
+          </label>
+          <div className="relative rounded-md shadow-sm">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <span className="text-gray-500 dark:text-gray-400 sm:text-sm">
+                {getCurrencySymbol(formData.currency)}
+              </span>
+            </div>
+            <input
+              type="number"
+              id="reservePrice"
+              className="form-input pl-7"
+              placeholder="0.00"
+              value={formData.reservePrice}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  reservePrice: Number.parseFloat(e.target.value) || 0,
+                }))
+              }
+            />
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t("auctionWillNotComplete")}</p>
+        </div>
+      )}
+    </div>
+
+    {/* Scheduled Auction Section */}
+    <div className="space-y-4 border-t pt-6 dark:border-gray-700">
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        {t("launchType")} <span className="text-destructive-500">*</span>
+      </label>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div
+          className={`border rounded-lg p-4 cursor-pointer transition-all-smooth hover:scale-105 ${
+            formData.launchType === "immediate"
+              ? "border-corporate-500 bg-corporate-50 dark:border-corporate-400 dark:bg-corporate-900/30"
+              : "border-gray-200 hover:border-corporate-200 dark:border-gray-700 dark:hover:border-corporate-700"
+          }`}
+          onClick={() => setFormData((prev) => ({ ...prev, launchType: "immediate" }))}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium dark:text-gray-100">{t("launchImmediately")}</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t("auctionWillStartAsSoon")}</p>
+            </div>
+            <div
+              className={`w-5 h-5 rounded-full border transition-all-smooth ${
+                formData.launchType === "immediate"
+                  ? "border-corporate-500 bg-corporate-500 dark:border-corporate-400 dark:bg-corporate-400"
+                  : "border-gray-300 dark:border-gray-600"
+              }`}
+            >
+              {formData.launchType === "immediate" && <CheckCircle className="w-5 h-5 text-white" />}
+            </div>
+          </div>
+        </div>
+
+        <div
+          className={`border rounded-lg p-4 cursor-pointer transition-all-smooth hover:scale-105 ${
+            formData.launchType === "scheduled"
+              ? "border-corporate-500 bg-corporate-50 dark:border-corporate-400 dark:bg-corporate-900/30"
+              : "border-gray-200 hover:border-corporate-200 dark:border-gray-700 dark:hover:border-corporate-700"
+          }`}
+          onClick={() => setFormData((prev) => ({ ...prev, launchType: "scheduled" }))}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-medium dark:text-gray-100">{t("scheduleForLater")}</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{t("setFutureDateAndTime")}</p>
+            </div>
+            <div
+              className={`w-5 h-5 rounded-full border transition-all-smooth ${
+                formData.launchType === "scheduled"
+                  ? "border-corporate-500 bg-corporate-500 dark:border-corporate-400 dark:bg-corporate-400"
+                  : "border-gray-300 dark:border-gray-600"
+              }`}
+            >
+              {formData.launchType === "scheduled" && <CheckCircle className="w-5 h-5 text-white" />}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {formData.launchType === "scheduled" && (
+        <div className="mt-4 space-y-4 animate-fade-in">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label
+                htmlFor="scheduledDate"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
+                {t("startDate")} <span className="text-destructive-500">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Calendar className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                 </div>
-
-                {/* Anti-Sniping Controls */}
-                <div className="space-y-4 border-t pt-4 dark:border-gray-700">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {t("antiSnipingControls")}
-                  </label>
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="bidExtension"
-                      className="form-checkbox"
-                      checked={formData.bidExtension}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          bidExtension: e.target.checked,
-                        }))
-                      }
-                    />
-                    <label htmlFor="bidExtension" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                      {t("enableBidExtension")}
-                    </label>
-                  </div>
-
-                  {formData.bidExtension && (
-                    <div className="ml-6 animate-fade-in">
-                      <label htmlFor="bidExtensionTime" className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
-                        {t("extendAuctionIfBid")}
-                      </label>
-                      <div className="flex items-center">
-                        <input
-                          type="number"
-                          id="bidExtensionTime"
-                          min="1"
-                          max="30"
-                          className="form-input w-20"
-                          value={formData.bidExtensionTime}
-                          onChange={(e) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              bidExtensionTime: Number.parseInt(e.target.value) || 5,
-                            }))
-                          }
-                        />
-                        <span className="ml-2 text-sm text-gray-700 dark:text-gray-300">{t("minutes")}</span>
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t("preventsLastSecondBidding")}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Auto-Bidding */}
-                <div className="space-y-4 border-t pt-4 dark:border-gray-700">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {t("automatedBidding")}
-                  </label>
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="allowAutoBidding"
-                      className="form-checkbox"
-                      checked={formData.allowAutoBidding}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          allowAutoBidding: e.target.checked,
-                        }))
-                      }
-                    />
-                    <label htmlFor="allowAutoBidding" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                      {t("allowParticipantsAutoBidding")}
-                    </label>
-                  </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{t("participantsCanSetMaxBid")}</p>
-                </div>
-
-                {/* Reserve Price */}
-                <div className="space-y-4 border-t pt-4 dark:border-gray-700">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {t("reservePrice")}
-                  </label>
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="enableReservePrice"
-                      className="form-checkbox"
-                      checked={formData.reservePrice !== undefined}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          reservePrice: e.target.checked ? 0 : undefined,
-                        }))
-                      }
-                    />
-                    <label htmlFor="enableReservePrice" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                      {t("setReservePrice")}
-                    </label>
-                  </div>
-
-                  {formData.reservePrice !== undefined && (
-                    <div className="ml-6 animate-fade-in">
-                      <label htmlFor="reservePrice" className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
-                        {t("reservePrice")}
-                      </label>
-                      <div className="relative rounded-md shadow-sm">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <span className="text-gray-500 dark:text-gray-400 sm:text-sm">
-                            {getCurrencySymbol(formData.currency)}
-                          </span>
-                        </div>
-                        <input
-                          type="number"
-                          id="reservePrice"
-                          className="form-input pl-7"
-                          placeholder="0.00"
-                          value={formData.reservePrice}
-                          onChange={(e) =>
-                            setFormData((prev) => ({
-                              ...prev,
-                              reservePrice: Number.parseFloat(e.target.value) || 0,
-                            }))
-                          }
-                        />
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t("auctionWillNotComplete")}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Scheduled Auction Section */}
-                <div className="space-y-4 border-t pt-6 dark:border-gray-700">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {t("launchType")} <span className="text-destructive-500">*</span>
-                  </label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div
-                      className={`border rounded-lg p-4 cursor-pointer transition-all-smooth hover:scale-105 ${
-                        formData.launchType === "immediate"
-                          ? "border-corporate-500 bg-corporate-50 dark:border-corporate-400 dark:bg-corporate-900/30"
-                          : "border-gray-200 hover:border-corporate-200 dark:border-gray-700 dark:hover:border-corporate-700"
-                      }`}
-                      onClick={() => setFormData((prev) => ({ ...prev, launchType: "immediate" }))}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-medium dark:text-gray-100">{t("launchImmediately")}</h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{t("auctionWillStartAsSoon")}</p>
-                        </div>
-                        <div
-                          className={`w-5 h-5 rounded-full border transition-all-smooth ${
-                            formData.launchType === "immediate"
-                              ? "border-corporate-500 bg-corporate-500 dark:border-corporate-400 dark:bg-corporate-400"
-                              : "border-gray-300 dark:border-gray-600"
-                          }`}
-                        >
-                          {formData.launchType === "immediate" && <CheckCircle className="w-5 h-5 text-white" />}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div
-                      className={`border rounded-lg p-4 cursor-pointer transition-all-smooth hover:scale-105 ${
-                        formData.launchType === "scheduled"
-                          ? "border-corporate-500 bg-corporate-50 dark:border-corporate-400 dark:bg-corporate-900/30"
-                          : "border-gray-200 hover:border-corporate-200 dark:border-gray-700 dark:hover:border-corporate-700"
-                      }`}
-                      onClick={() => setFormData((prev) => ({ ...prev, launchType: "scheduled" }))}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-medium dark:text-gray-100">{t("scheduleForLater")}</h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">{t("setFutureDateAndTime")}</p>
-                        </div>
-                        <div
-                          className={`w-5 h-5 rounded-full border transition-all-smooth ${
-                            formData.launchType === "scheduled"
-                              ? "border-corporate-500 bg-corporate-500 dark:border-corporate-400 dark:bg-corporate-400"
-                              : "border-gray-300 dark:border-gray-600"
-                          }`}
-                        >
-                          {formData.launchType === "scheduled" && <CheckCircle className="w-5 h-5 text-white" />}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {formData.launchType === "scheduled" && (
-                    <div className="mt-4 space-y-4 animate-fade-in">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label
-                            htmlFor="scheduledDate"
-                            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                          >
-                            {t("startDate")} <span className="text-destructive-500">*</span>
-                          </label>
-                          <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                              <Calendar className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-                            </div>
-                            <input
-                              type="date"
-                              id="scheduledDate"
-                              ref={scheduledDateRef}
-                              className={`form-input pl-10 ${
-                                hasError("scheduledStart")
-                                  ? "border-destructive-500 dark:border-destructive-400 focus:border-destructive-500 dark:focus:border-destructive-400 focus:ring-destructive-500/20 dark:focus:ring-destructive-400/20"
-                                  : ""
-                              }`}
-                              value={formatDateForInput(formData.scheduledStart)}
-                              min={formatDateForInput(new Date().toISOString())}
-                              onChange={handleScheduledDateChange}
-                            />
-                          </div>
-                        </div>
-
-                        <div>
-                          <label
-                            htmlFor="scheduledTime"
-                            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
-                          >
-                            {t("startTime")} <span className="text-destructive-500">*</span>
-                          </label>
-                          <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                              <Clock className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-                            </div>
-                            <input
-                              type="time"
-                              id="scheduledTime"
-                              ref={scheduledTimeRef}
-                              className={`form-input pl-10 ${
-                                hasError("scheduledStart")
-                                  ? "border-destructive-500 dark:border-destructive-400 focus:border-destructive-500 dark:focus:border-destructive-400 focus:ring-destructive-500/20 dark:focus:ring-destructive-400/20"
-                                  : ""
-                              }`}
-                              value={formatTimeForInput(formData.scheduledStart)}
-                              onChange={handleScheduledDateChange}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      {hasError("scheduledStart") && <ErrorMessage message={getErrorMessage("scheduledStart")} />}
-
-                      <div className="bg-corporate-50 dark:bg-corporate-900/30 p-4 rounded-md flex items-start">
-                        <Calendar className="w-5 h-5 text-corporate-500 dark:text-corporate-400 mt-0.5 mr-2 flex-shrink-0" />
-                        <p className="text-sm text-corporate-700 dark:text-corporate-300">
-                          {t("auctionWillBeScheduled")} {formatDateTime(formData.scheduledStart)}.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <input
+                  type="date"
+                  id="scheduledDate"
+                  ref={scheduledDateRef}
+                  className={`form-input pl-10 ${
+                    hasError("scheduledStart")
+                      ? "border-destructive-500 dark:border-destructive-400 focus:border-destructive-500 dark:focus:border-destructive-400 focus:ring-destructive-500/20 dark:focus:ring-destructive-400/20"
+                      : ""
+                  }`}
+                  value={formatDateForInput(formData.scheduledStart)}
+                  min={formatDateForInput(new Date().toISOString())}
+                  onChange={handleScheduledDateChange}
+                />
               </div>
-            )}
+            </div>
+
+            <div>
+              <label
+                htmlFor="scheduledTime"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
+                {t("startTime")} <span className="text-destructive-500">*</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Clock className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                </div>
+                <input
+                  type="time"
+                  id="scheduledTime"
+                  ref={scheduledTimeRef}
+                  className={`form-input pl-10 ${
+                    hasError("scheduledStart")
+                      ? "border-destructive-500 dark:border-destructive-400 focus:border-destructive-500 dark:focus:border-destructive-400 focus:ring-destructive-500/20 dark:focus:ring-destructive-400/20"
+                      : ""
+                  }`}
+                  value={formatTimeForInput(formData.scheduledStart)}
+                  onChange={handleScheduledDateChange}
+                />
+              </div>
+            </div>
+          </div>
+          {hasError("scheduledStart") && <ErrorMessage message={getErrorMessage("scheduledStart")} />}
+
+          <div className="bg-corporate-50 dark:bg-corporate-900/30 p-4 rounded-md flex items-start">
+            <Calendar className="w-5 h-5 text-corporate-500 dark:text-corporate-400 mt-0.5 mr-2 flex-shrink-0" />
+            <p className="text-sm text-corporate-700 dark:text-corporate-300">
+              {t("auctionWillBeScheduled")} {formatDateTime(formData.scheduledStart)}.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+)}
 
             {/* Step 4: Participation Rules */}
             {currentStep === 4 && (
