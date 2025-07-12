@@ -143,79 +143,90 @@ async function createAuction(req: NextRequest, user: any): Promise<NextResponse>
       }
     }
 
-    // Validate bid increment rules
-    if (auctionData.bidIncrementType === "range-based" && auctionData.bidIncrementRules.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "At least one bid increment rule is required for range-based auctions" },
-        { status: 400 }
-      );
-    }
-
-    // Validate bid increment based on type
-    if (auctionData.bidIncrementType === "fixed") {
-      const fixedRule = auctionData.bidIncrementRules[0];
-      if (!fixedRule || !fixedRule.incrementValue || fixedRule.incrementValue <= 0) {
+    // Special case: Yankee auction
+    if (auctionData.auctionSubType === "yankee") {
+      if (!auctionData.productQuantity || auctionData.productQuantity < 2) {
         return NextResponse.json(
-          { success: false, error: "Minimum increment must be a positive number for fixed type" },
+          { success: false, error: "Quantity must be at least 2 for Yankee auctions" },
           { status: 400 }
         );
       }
-    } else if (auctionData.bidIncrementType === "percentage") {
-      const percentageRule = auctionData.bidIncrementRules[0];
-      if (!percentageRule || !percentageRule.incrementValue || percentageRule.incrementValue < 0.1 || percentageRule.incrementValue > 100) {
+      // Remove bid increment rules and types
+      auctionData.bidIncrementType = 'fixed';
+      auctionData.minimumIncrement = 0;
+      auctionData.bidIncrementRules = [];
+    } else {
+      // Validate bid increment rules if not Yankee
+      if (auctionData.bidIncrementType === "range-based" && auctionData.bidIncrementRules.length === 0) {
         return NextResponse.json(
-          { success: false, error: "Percentage increment must be between 0.1% and 100%" },
+          { success: false, error: "At least one bid increment rule is required for range-based auctions" },
           { status: 400 }
         );
+      }
+
+      if (auctionData.bidIncrementType === "fixed") {
+        const fixedRule = auctionData.bidIncrementRules[0];
+        if (!fixedRule || !fixedRule.incrementValue || fixedRule.incrementValue <= 0) {
+          return NextResponse.json(
+            { success: false, error: "Minimum increment must be a positive number for fixed type" },
+            { status: 400 }
+          );
+        }
+      } else if (auctionData.bidIncrementType === "percentage") {
+        const percentageRule = auctionData.bidIncrementRules[0];
+        if (!percentageRule || !percentageRule.incrementValue || percentageRule.incrementValue < 0.1 || percentageRule.incrementValue > 100) {
+          return NextResponse.json(
+            { success: false, error: "Percentage increment must be between 0.1% and 100%" },
+            { status: 400 }
+          );
+        }
       }
     }
 
     // Generate auction ID
     const auctionId = randomUUID();
-
-    // Extract only URLs from productImages
     const productImageUrls = auctionData.productImages?.map((img) => img.url) || [];
     const createdAt = new Date().toISOString();
-let scheduledstart: string;
 
-if (auctionData.launchType === "immediate") {
-  scheduledstart = createdAt;
-} else if (auctionData.scheduledStart) {
-  // If provided, use the scheduledstart from the client
-  scheduledstart = new Date(auctionData.scheduledStart).toISOString();
-} else {
-  return NextResponse.json(
-    { success: false, error: "Scheduled start time is required for scheduled auctions" },
-    { status: 400 }
-  );
-}
+    let scheduledstart: string;
+    if (auctionData.launchType === "immediate") {
+      scheduledstart = createdAt;
+    } else if (auctionData.scheduledStart) {
+      scheduledstart = new Date(auctionData.scheduledStart).toISOString();
+    } else {
+      return NextResponse.json(
+        { success: false, error: "Scheduled start time is required for scheduled auctions" },
+        { status: 400 }
+      );
+    }
 
-
-    // Prepare auction data for insertion
+    // Prepare auction record
     const newAuction = keysToLowerCase({
       id: auctionId,
       ...auctionData,
       createdAt,
       scheduledstart,
       status: auctionData.launchType === "immediate" ? "active" : "scheduled",
-      currentBid: auctionData.auctionType === "reverse" ? auctionData.targetprice : auctionData.startPrice, // For reverse, start at targetprice
+      currentBid: auctionData.auctionType === "reverse" ? auctionData.targetprice : auctionData.startPrice,
       bidCount: 0,
       approved: false,
       participants: [],
       productimages: productImageUrls,
       productImages: undefined,
-      percent: auctionData.bidIncrementType === "percentage" ? auctionData.bidIncrementRules[0]?.incrementValue : null,
-      minimumincrement: auctionData.bidIncrementType === "fixed" ? auctionData.bidIncrementRules[0]?.incrementValue : 0,
-      requireddocuments: auctionData.requireddocuments ? JSON.parse(auctionData.requireddocuments) : null, // Parse JSON string to jsonb
-      targetprice: auctionData.targetprice || null, // Store targetprice for reverse auctions
-      createdby: createdBy, // Ensure createdby is included
+      percent:
+        auctionData.bidIncrementType === "percentage"
+          ? auctionData.bidIncrementRules[0]?.incrementValue
+          : null,
+      minimumincrement:
+        auctionData.bidIncrementType === "fixed"
+          ? auctionData.bidIncrementRules[0]?.incrementValue
+          : 0,
+      requireddocuments: auctionData.requireddocuments ? JSON.parse(auctionData.requireddocuments) : null,
+      targetprice: auctionData.targetprice || null,
+      createdby: createdBy,
     });
 
-    // Insert into Supabase
-    const { data, error } = await supabase
-      .from("auctions")
-      .insert([newAuction])
-      .select();
+    const { data, error } = await supabase.from("auctions").insert([newAuction]).select();
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 400 });
     }
@@ -232,6 +243,7 @@ if (auctionData.launchType === "immediate") {
     return NextResponse.json({ success: false, error: "Failed to create auction" }, { status: 500 });
   }
 }
+
 
 // Apply authentication and rate limiting to the handlers
 const authenticatedGetAuctions = withAuth(getAuctions, "view_public_auctions");
