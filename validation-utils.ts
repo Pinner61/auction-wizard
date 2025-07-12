@@ -44,7 +44,10 @@ export function validateStep2(
   scheduledStart: string,
   bidExtension?: boolean,
   bidExtensionTime?: number,
+  auctionSubType?: string,         // 👈 ADD THIS
+  productQuantity?: number         // 👈 AND THIS
 ): StepValidation {
+
   const errors: ValidationError[] = []
 
   if (startPrice <= 0) {
@@ -61,13 +64,13 @@ export function validateStep2(
     })
   }
 
-  // Check if at least one duration field has a value greater than 0
-  if (days === 0 && hours === 0 && minutes === 0) {
-    errors.push({
-      field: "auctionDuration",
-      message: "Auction duration must be greater than zero",
-    })
-  }
+if (auctionSubType !== "yankee" && minimumIncrement <= 0) {
+  errors.push({
+    field: "minimumIncrement",
+    message: "Minimum increment must be greater than zero",
+  });
+}
+
 
   // Validate scheduled start time if launch type is scheduled
   if (launchType === "scheduled") {
@@ -102,7 +105,8 @@ export function validateStep2(
 }
 
 // Validate Step 3: Product Details
-export function validateStep3(productName: string, productDescription: string): StepValidation {
+export function validateStep3(productName: string, productDescription: string,  auctionSubType?: string,
+  productQuantity?: number  ): StepValidation {
   const errors: ValidationError[] = []
 
   if (!productName.trim()) {
@@ -116,6 +120,20 @@ export function validateStep3(productName: string, productDescription: string): 
       message: "Product name must be at least 3 characters",
     })
   }
+  if (auctionSubType === "yankee") {
+  if (productQuantity == null || productQuantity <= 0) {
+    errors.push({
+      field: "productQuantity",
+      message: "Product quantity is required for Yankee auctions",
+    });
+  }
+  if (productQuantity && productQuantity < 2) {
+    errors.push({
+      field: "productQuantity",
+      message: "For a single item auction, please select other subtypes like English or Dutch in the auction type",
+    });
+  }
+}
 
   if (!productDescription.trim()) {
     errors.push({
