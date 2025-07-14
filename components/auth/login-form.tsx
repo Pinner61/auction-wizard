@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Eye, EyeOff, Mail, Lock, Building, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { useRouter } from "next/navigation"; // ✅ Import router
 
 export type UserRole = "admin" | "seller" | "both";
 
@@ -33,7 +34,8 @@ export default function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProp
   const [error, setError] = useState("");
   const [user, setUser] = useState<UserType | null>(null);
 
-  // Load user from localStorage on mount
+  const router = useRouter(); // ✅ Initialize router
+
   useEffect(() => {
     const storedUser = localStorage.getItem("auction_user");
     if (storedUser) setUser(JSON.parse(storedUser));
@@ -44,7 +46,6 @@ export default function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProp
     setError("");
     setIsLoading(true);
 
-    // Supabase sign in
     const { data, error: authError } = await supabase.auth.signInWithPassword({
       email: formData.email,
       password: formData.password,
@@ -59,7 +60,6 @@ export default function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProp
     const supaUser: SupabaseUser = data.user;
     const session = data.session;
 
-    // Extract info from user_metadata
     const meta = supaUser.user_metadata || {};
     let userTypeData: UserType = {
       id: supaUser.id,
@@ -74,7 +74,6 @@ export default function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProp
       lastLogin: new Date().toISOString(),
     };
 
-    // Fetch from profiles table for fname and lname
     try {
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
@@ -98,7 +97,6 @@ export default function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProp
       return;
     }
 
-    // Check if role is "seller" or "both"
     const allowedRoles = ["seller", "both", "admin"];
     if (!allowedRoles.includes(userTypeData.role.toLowerCase())) {
       setError("Access denied. Only sellers or accounts with both roles can log in to this portal.");
@@ -107,11 +105,20 @@ export default function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProp
       return;
     }
 
-    // Store in localStorage and state
-    localStorage.setItem("auction_user", JSON.stringify(userTypeData));
-    localStorage.setItem("auction_session", JSON.stringify(session));
-    setUser(userTypeData);
-    onLogin(userTypeData);
+// ✅ Final step after saving to localStorage
+localStorage.setItem("auction_user", JSON.stringify(userTypeData));
+localStorage.setItem("auction_session", JSON.stringify(session));
+setUser(userTypeData);
+onLogin(userTypeData);
+
+// ✅ Role-based redirect
+if (userTypeData.role === "admin") {
+  router.push("/admin-panel");
+} else if (userTypeData.role === "seller" || userTypeData.role === "both") {
+  router.push("/seller-panel");
+}
+
+
     setIsLoading(false);
   };
 
