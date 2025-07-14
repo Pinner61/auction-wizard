@@ -53,7 +53,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   return NextResponse.json({ success: true, message: "Auction approved successfully" });
 }
 
-
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const auctionId = params.id;
 
@@ -61,14 +60,26 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return NextResponse.json({ success: false, error: "Auction ID is required" }, { status: 400 });
   }
 
-  const { error } = await supabase
-    .from("auctions")
-    .delete()
-    .eq("id", auctionId);
+  try {
+    // Start a transaction to ensure both deletions succeed or fail together
+    const { error: deleteBidsError } = await supabase
+      .from("bids")
+      .delete()
+      .eq("auction_id", auctionId);
 
-  if (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    if (deleteBidsError) throw deleteBidsError;
+
+    // Delete the auction
+    const { error: deleteAuctionError } = await supabase
+      .from("auctions")
+      .delete()
+      .eq("id", auctionId);
+
+    if (deleteAuctionError) throw deleteAuctionError;
+
+    return NextResponse.json({ success: true, message: "Auction and associated bids deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting auction and bids:", error);
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : "Failed to delete auction and bids" }, { status: 500 });
   }
-
-  return NextResponse.json({ success: true, message: "Auction deleted successfully" });
 }
