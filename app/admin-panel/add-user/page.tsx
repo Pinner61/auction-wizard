@@ -25,7 +25,7 @@ export default function AddUser() {
   const displayName = user?.fname || "Admin"; // Fallback to "Admin" if fname is unavailable
   const handleLogout = () => {
     logout();
-    router.push("/login");
+    router.push("/");
   };
   const handleNavigate = (path: string) => {
     router.push(path);
