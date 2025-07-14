@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent,DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import LiveAuctionRoom from "../bidding/live-auction-room";
 import ThemeToggle from "../../theme-toggle";
 import { CheckCircle, XCircle } from "lucide-react";
@@ -16,7 +16,6 @@ import {
   Search,
   Eye,
   Edit,
-  Trash2,
   MoreHorizontal,
   Calendar,
   DollarSign,
@@ -25,7 +24,6 @@ import {
   TrendingUp,
   AlertCircle,
   Play,
-  Zap,
 } from "lucide-react";
 
 interface AuctionItem {
@@ -231,19 +229,10 @@ export default function AuctionDashboard({ onCreateAuction }: AuctionDashboardPr
     return <LiveAuctionRoom auctionId={selectedAuctionId} onBack={() => setSelectedAuctionId(null)} />;
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "live":
-        return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
-      case "scheduled":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300";
-      case "ended":
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300";
-      case "cancelled":
-        return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
-      default:
-        return "bg-yellow-100 text-yellow-800 dark:text-yellow-900/30 dark:text-yellow-300";
-    }
+  const getStatusColor = (approved: boolean) => {
+    return approved
+      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+      : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300";
   };
 
   const formatCurrency = (amount: number, currency: string) => {
@@ -262,38 +251,6 @@ export default function AuctionDashboard({ onCreateAuction }: AuctionDashboardPr
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
-
-  const handleApprove = async (auctionId: string) => {
-    try {
-      const response = await fetch(`/api/auctions/${auctionId}`, {
-        method: "PUT",
-      });
-      if (response.ok) {
-        setAuctions((prev) =>
-          prev.map((auction) =>
-            auction.id === auctionId ? { ...auction, approved: true } : auction
-          )
-        );
-      }
-    } catch (error) {
-      console.error("Failed to approve auction:", error);
-    }
-  };
-
-  const handleDelete = async (auctionId: string) => {
-    try {
-      const response = await fetch(`/api/auctions/${auctionId}`, {
-        method: "DELETE",
-      });
-      if (response.ok) {
-        setAuctions((prev) => prev.filter((auction) => auction.id !== auctionId));
-        setFilteredAuctions((prev) => prev.filter((auction) => auction.id !== auctionId));
-      }
-    } catch (error) {
-      console.error("Failed to delete auction:", error);
-    }
-
   };
 
   // Pagination logic
@@ -478,9 +435,8 @@ export default function AuctionDashboard({ onCreateAuction }: AuctionDashboardPr
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute top-4 left-4">
-                    <Badge className={getStatusColor(auction.status)}>
-                      {auction.status === "live" && <Zap className="w-3 h-3 mr-1" />}
-                      {auction.status.charAt(0).toUpperCase() + auction.status.slice(1)}
+                    <Badge className={getStatusColor(auction.approved || false)}>
+                      {auction.approved ? "Approved" : "Pending"}
                     </Badge>
                   </div>
                   <div className="absolute top-4 right-4">
@@ -505,49 +461,6 @@ export default function AuctionDashboard({ onCreateAuction }: AuctionDashboardPr
                           <Edit className="w-4 h-4 mr-2" />
                           Edit Auction
                         </DropdownMenuItem>
-                        {user?.role === "admin" && (
-                          <>
-{auction.approved === false && (
-  <>
-    <DropdownMenuItem asChild>
-      <Button
-        variant="ghost"
-        className="w-full justify-start text-blue-600 hover:text-blue-700"
-        onClick={() => handleApprove(auction.id)}
-      >
-        <CheckCircle className="w-4 h-4 mr-2" />
-        Approve
-      </Button>
-    </DropdownMenuItem>
-
-    <DropdownMenuItem asChild>
-      <Button
-        variant="ghost"
-        className="w-full justify-start text-black hover:text-gray-700"
-        onClick={() => handleDelete(auction.id)}
-      >
-        <XCircle className="w-4 h-4 mr-2" />
-        Reject
-      </Button>
-    </DropdownMenuItem>
-  </>
-)}
-
-{auction.approved === true && (
-  <DropdownMenuItem asChild>
-    <Button
-      variant="ghost"
-      className="w-full justify-start text-red-600 hover:text-red-700"
-      onClick={() => handleDelete(auction.id)}
-    >
-      <Trash2 className="w-4 h-4 mr-2" />
-      Delete Auction
-    </Button>
-  </DropdownMenuItem>
-)}
-
-                          </>
-                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -599,15 +512,6 @@ export default function AuctionDashboard({ onCreateAuction }: AuctionDashboardPr
                         <Play className="w-4 h-4 mr-2" />
                         Join Live Auction
                       </Button>
-                    )}
-
-                    {user?.role === "admin" && (
-                      <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-600 dark:text-gray-400">Created by</span>
-                          <span className="font-medium">{auction.createdByName}</span>
-                        </div>
-                      </div>
                     )}
 
                     <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
