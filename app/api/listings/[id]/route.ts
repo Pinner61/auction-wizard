@@ -28,10 +28,6 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
     const { productname, productdescription, startprice, minimumincrement, auctionduration, targetprice, editable } = await req.json();
 
-    if (!productname || !productdescription || !startprice || !minimumincrement || !auctionduration || !targetprice || editable === undefined) {
-      return NextResponse.json({ success: false, error: "All fields including editable status are required" }, { status: 400 });
-    }
-
     // Check if the auction is editable
     const { data: auctionData, error: fetchError } = await supabase
       .from("auctions")
