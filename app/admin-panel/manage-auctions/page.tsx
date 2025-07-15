@@ -15,6 +15,7 @@ interface Auction {
   createdby: string;
   ended: boolean;
   approved: boolean;
+  auctiontype: string;
 }
 
 export default function ManageAuctions() {
@@ -306,6 +307,9 @@ export default function ManageAuctions() {
                         Approved
                       </th>
                       <th className="p-4 text-sm font-semibold text-gray-600 dark:text-gray-400">
+                        Auction Type
+                      </th>
+                      <th className="p-4 text-sm font-semibold text-gray-600 dark:text-gray-400">
                         Actions
                       </th>
                     </tr>
@@ -321,6 +325,7 @@ export default function ManageAuctions() {
                         <td className="p-4">{auction.createdby}</td>
                         <td className="p-4">{auction.ended ? "Yes" : "No"}</td>
                         <td className="p-4">{auction.approved ? "Yes" : "No"}</td>
+                        <td className="p-4">{auction.auctiontype}</td>
                         <td className="p-4 flex space-x-2">
                           {!auction.approved && (
                             <>
