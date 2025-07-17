@@ -61,7 +61,7 @@ const translations = {
     enterProductName: "Enter product name",
     productDescription: "Product Description",
     enterProductDescription: "Enter product description",
-    productImages: "Product Images",
+    productImages: "Product Images and Videos",
     productDocuments: "Product Documents",
 
     // Step 3 - Bidding Parameters
@@ -221,7 +221,7 @@ const translations = {
     enterProductName: "Entrer le nom du produit",
     productDescription: "Description du produit",
     enterProductDescription: "Entrer la description du produit",
-    productImages: "Images du produit",
+    productImages: "Images et vidéos du produit",
     productDocuments: "Documents du produit",
 
     // Step 3 - Bidding Parameters
@@ -380,7 +380,7 @@ const translations = {
     enterProductName: "Enter product name",
     productDescription: "Product Description",
     enterProductDescription: "Enter product description",
-    productImages: "Product Images",
+    productImages: "Product Images and Videos",
     productDocuments: "Product Documents",
 
     // Step 3 - Bidding Parameters
@@ -539,7 +539,7 @@ const translations = {
     enterProductName: "Enter product name",
     productDescription: "Product Description",
     enterProductDescription: "Enter product description",
-    productImages: "Product Images",
+    productImages: "Product Images and Videos",
     productDocuments: "Product Documents",
 
     // Step 3 - Bidding Parameters
@@ -698,7 +698,7 @@ const translations = {
     enterProductName: "Enter product name",
     productDescription: "Product Description",
     enterProductDescription: "Enter product description",
-    productImages: "Product Images",
+    productImages: "Product Images and Videos",
     productDocuments: "Product Documents",
 
     // Step 3 - Bidding Parameters
@@ -857,7 +857,7 @@ const translations = {
     enterProductName: "Enter product name",
     productDescription: "Product Description",
     enterProductDescription: "Enter product description",
-    productImages: "Product Images",
+    productImages: "Product Images and Videos",
     productDocuments: "Product Documents",
 
     // Step 3 - Bidding Parameters
@@ -1016,7 +1016,7 @@ const translations = {
     enterProductName: "Enter product name",
     productDescription: "Product Description",
     enterProductDescription: "Enter product description",
-    productImages: "Product Images",
+    productImages: "Product Images  and Videos",
     productDocuments: "Product Documents",
 
     // Step 3 - Bidding Parameters
@@ -1175,7 +1175,7 @@ const translations = {
     enterProductName: "Enter product name",
     productDescription: "Product Description",
     enterProductDescription: "Enter product description",
-    productImages: "Product Images",
+    productImages: "Product Images and Videos",
     productDocuments: "Product Documents",
 
     // Step 3 - Bidding Parameters
