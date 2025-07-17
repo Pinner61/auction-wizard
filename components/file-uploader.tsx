@@ -1,19 +1,19 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useRef, useState } from "react"
-import { Upload, X, AlertCircle, FileText } from "lucide-react"
-import { useFileUpload } from "@/hooks/use-file-upload"
-import type { UploadedFile } from "@/types/auction-types" // Updated import to use the correct type
+import type React from "react";
+import { useRef, useState } from "react";
+import { Upload, X, AlertCircle, FileText } from "lucide-react";
+import { useFileUpload } from "@/hooks/use-file-upload";
+import type { UploadedFile } from "@/types/auction-types"; // Updated import to use the correct type
 
 interface FileUploaderProps {
-  accept: string
-  maxFiles?: number
-  maxSize?: number // in bytes
-  uploadedFiles: UploadedFile[]
-  onFilesUploaded: (files: UploadedFile[]) => Promise<void> // Changed to async
-  onFileRemoved: (fileId: string) => void
-  type: "image" | "document"
+  accept: string;
+  maxFiles?: number;
+  maxSize?: number; // in bytes
+  uploadedFiles: UploadedFile[];
+  onFilesUploaded: (files: UploadedFile[]) => Promise<void>; // Changed to async
+  onFileRemoved: (fileId: string) => void;
+  type: "image" | "document" | "video" | "media"; // Added "media" to the union type
 }
 
 export default function FileUploader({
@@ -25,87 +25,97 @@ export default function FileUploader({
   onFileRemoved,
   type,
 }: FileUploaderProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const { uploadState, uploadFiles, removeFile, resetUploadState } = useFileUpload(type === "document" ? "documents" : "public")
-  const [dragActive, setDragActive] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { uploadState, uploadFiles, removeFile, resetUploadState } = useFileUpload(
+    type === "document" ? "documents" : "public" // Keep document logic, public for media/image/video
+  );
+  const [dragActive, setDragActive] = useState(false);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) return
+    if (!e.target.files || e.target.files.length === 0) return;
 
-    const files = Array.from(e.target.files)
-    await handleFileUpload(files)
+    const files = Array.from(e.target.files);
+    await handleFileUpload(files);
 
     // Clear the input so the same file can be uploaded again if needed
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""
+      fileInputRef.current.value = "";
     }
-  }
+  };
 
   const handleFileUpload = async (files: File[]) => {
     // Validate files before uploading
     const validFiles = files.filter((file) => {
       // Check file size
       if (file.size > maxSize) {
-        alert(`File ${file.name} is too large. Maximum size is ${maxSize / (1024 * 1024)}MB.`)
-        return false
+        alert(`File ${file.name} is too large. Maximum size is ${maxSize / (1024 * 1024)}MB.`);
+        return false;
       }
 
       // Check if max files would be exceeded
       if (uploadedFiles.length + files.length > maxFiles) {
-        alert(`You can only upload a maximum of ${maxFiles} files.`)
-        return false
-      }
-
-      // Check file type based on 'type' prop
-      const isImage = type === "image" && file.type.startsWith("image/");
-      const isDocument = type === "document" && [".pdf", ".doc", ".docx"].some(ext => file.name.toLowerCase().endsWith(ext));
-      if (!isImage && !isDocument) {
-        alert(`File ${file.name} is not a valid ${type}.`);
+        alert(`You can only upload a maximum of ${maxFiles} files.`);
         return false;
       }
 
-      return true
-    })
+      // Check file type based on 'type' prop
+      const isImage = file.type.startsWith("image/");
+      const isVideo = file.type.startsWith("video/");
+      const isDocument = type === "document" && [".pdf", ".doc", ".docx"].some((ext) =>
+        file.name.toLowerCase().endsWith(ext)
+      );
+      if (
+        (type === "image" && !isImage) ||
+        (type === "video" && !isVideo) ||
+        (type === "document" && !isDocument) ||
+        (type === "media" && !(isImage || isVideo))
+      ) {
+        alert(`File ${file.name} is not a valid ${type === "media" ? "image or video" : type}.`);
+        return false;
+      }
 
-    if (validFiles.length === 0) return
+      return true;
+    });
+
+    if (validFiles.length === 0) return;
 
     try {
-      const newUploadedFiles = await uploadFiles(validFiles)
+      const newUploadedFiles = await uploadFiles(validFiles);
       if (newUploadedFiles.length > 0) {
-        onFilesUploaded(newUploadedFiles)
+        onFilesUploaded(newUploadedFiles);
       }
     } catch (error) {
-      console.error("Error uploading files:", error)
+      console.error("Error uploading files:", error);
     }
-  }
+  };
 
   const handleRemoveFile = async (fileId: string) => {
-    const success = await removeFile(fileId)
+    const success = await removeFile(fileId);
     if (success) {
-      onFileRemoved(fileId)
+      onFileRemoved(fileId);
     }
-  }
+  };
 
   const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
+    e.preventDefault();
+    e.stopPropagation();
 
     if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true)
+      setDragActive(true);
     } else if (e.type === "dragleave") {
-      setDragActive(false)
+      setDragActive(false);
     }
-  }
+  };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setDragActive(false)
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleFileUpload(Array.from(e.dataTransfer.files))
+      handleFileUpload(Array.from(e.dataTransfer.files));
     }
-  }
+  };
 
   return (
     <div className="space-y-4">
@@ -128,7 +138,7 @@ export default function FileUploader({
               htmlFor={`file-upload-${type}`}
               className="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-corporate-600 dark:text-corporate-400 hover:text-corporate-500 dark:hover:text-corporate-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-corporate-500 dark:focus-within:ring-corporate-400 transition-colors-smooth"
             >
-              <span>Upload {type === "image" ? "images" : "documents"}</span>
+              <span>Upload {type === "media" ? "media" : type === "image" ? "images" : type === "video" ? "videos" : "documents"}</span>
               <input
                 id={`file-upload-${type}`}
                 name={`file-upload-${type}`}
@@ -144,7 +154,13 @@ export default function FileUploader({
             <p className="pl-1">or drag and drop</p>
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            {type === "image" ? "PNG, JPG, GIF up to 10MB" : "PDF, DOCX, XLSX up to 10MB"}
+            {type === "image"
+              ? "PNG, JPG, GIF up to 10MB"
+              : type === "video"
+              ? "MP4, WebM, MOV up to 10MB"
+              : type === "media"
+              ? "Images (PNG, JPG, GIF) or Videos (MP4, WebM, MOV) up to 10MB"
+              : "PDF, DOCX, XLSX up to 10MB"}
           </p>
         </div>
       </div>
@@ -174,25 +190,53 @@ export default function FileUploader({
       )}
 
       {/* Preview of uploaded files */}
-      {type === "image" && uploadedFiles.length > 0 && (
+      {(type === "image" || type === "media") && uploadedFiles.length > 0 && (
         <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {uploadedFiles.map((file) => (
-            <div key={file.id} className="relative group animate-fade-in">
-              <img
-                src={file.url || "/placeholder.svg"}
-                alt={file.name}
-                className="h-24 w-full object-cover rounded-md transition-transform-smooth hover:scale-105"
-              />
-              <button
-                type="button"
-                className="absolute top-1 right-1 bg-destructive-500 dark:bg-destructive-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity-smooth hover:bg-destructive-600 dark:hover:bg-destructive-700 active-scale"
-                onClick={() => handleRemoveFile(file.id)}
-                aria-label={`Remove image ${file.name}`}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          ))}
+          {uploadedFiles
+            .filter((file) => file.type.startsWith("image/"))
+            .map((file) => (
+              <div key={file.id} className="relative group animate-fade-in">
+                <img
+                  src={file.url || "/placeholder.svg"}
+                  alt={file.name}
+                  className="h-24 w-full object-cover rounded-md transition-transform-smooth hover:scale-105"
+                />
+                <button
+                  type="button"
+                  className="absolute top-1 right-1 bg-destructive-500 dark:bg-destructive-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity-smooth hover:bg-destructive-600 dark:hover:bg-destructive-700 active-scale"
+                  onClick={() => handleRemoveFile(file.id)}
+                  aria-label={`Remove image ${file.name}`}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+        </div>
+      )}
+
+      {(type === "video" || type === "media") && uploadedFiles.length > 0 && (
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {uploadedFiles
+            .filter((file) => file.type.startsWith("video/"))
+            .map((file) => (
+              <div key={file.id} className="relative group animate-fade-in">
+                <video
+                  controls
+                  className="h-24 w-full object-cover rounded-md transition-transform-smooth hover:scale-105"
+                >
+                  <source src={file.url} type={file.type} />
+                  Your browser does not support the video tag.
+                </video>
+                <button
+                  type="button"
+                  className="absolute top-1 right-1 bg-destructive-500 dark:bg-destructive-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity-smooth hover:bg-destructive-600 dark:hover:bg-destructive-700 active-scale"
+                  onClick={() => handleRemoveFile(file.id)}
+                  aria-label={`Remove video ${file.name}`}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
         </div>
       )}
 
@@ -220,5 +264,5 @@ export default function FileUploader({
         </div>
       )}
     </div>
-  )
+  );
 }
