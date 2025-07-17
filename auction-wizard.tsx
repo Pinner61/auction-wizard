@@ -16,11 +16,13 @@ import ApiKeySetup from "./components/api-key-setup";
 import { I18nProvider, useTranslation } from "./i18n/i18n-context";
 import type { AuctionFormData, AuctionTemplate, UploadedFile, Currency, Language } from "./types/auction-types";
 import { createClient } from "@supabase/supabase-js";
-import { useFileUpload } from "./hooks/use-file-upload"; // Adjust path as needed
+import { useFileUpload,handleImagesOrVideosUploaded } from "./hooks/use-file-upload"; // Adjust path as needed
+import { useRouter } from "next/navigation";
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
 import {
   validateStep1,
   validateStep2,
@@ -154,6 +156,7 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
   });
 
   const { user, isLoading, login } = useAuth();
+  const router = useRouter();
 
   // API Key management
   const [apiKey, setApiKey] = useState("");
@@ -216,12 +219,12 @@ function AuctionWizardContent({ language, onLanguageChange }: AuctionWizardConte
   const scheduledTimeRef = useRef<HTMLInputElement>(null);
 
   // File upload hooks
-  const {
-    uploadState: imageUploadState,
-    uploadFiles: uploadImages,
-    removeFile: removeImage,
-    resetUploadState: resetImageUpload,
-  } = useFileUpload("public");
+const {
+  uploadState: fileUploadState,
+  uploadFiles,
+  removeFile: removeFile,
+  resetUploadState: resetFileUpload,
+} = useFileUpload("public");
 
   const {
     uploadState: documentUploadState,
@@ -574,30 +577,32 @@ const handlePrevious = () => {
     }
   };
 
-  const handleGoToDashboard = () => {
-    // In a real app, this would navigate to the dashboard
-    alert("Navigating to dashboard...");
-    // Reset the wizard state if needed
-    setIsLaunched(false);
-    setCurrentStep(1);
-  };
+const handleGoToDashboard = () => {
+  // In a real app, this would navigate to the dashboard
+  alert("Navigating to dashboard...");
+  // Reset the wizard state if needed
+  setIsLaunched(false);
+  setCurrentStep(1);
+  // Navigate to /seller-panel
+  router.push("/seller-panel");
+};
 
   // Handler for uploaded images
-  const handleImagesUploaded = async (newImages: UploadedFile[]) => {
-    console.log("New images:", newImages); // Debug
-    const files = newImages.map((img) => img.file as unknown as File); // Safer cast via unknown
-    const uploadedFiles = await uploadImages(files);
-    setFormData({
-      ...formData,
-      productImages: [
-        ...formData.productImages,
-        ...uploadedFiles.map((file) => ({
-          ...file,
-          url: file.url || "", // Ensure url is a string
-        }) as const), // Type assertion to enforce UploadedFile shape
-      ],
-    });
-  };
+const handleImagesUploaded = async (newFiles: UploadedFile[]) => {
+  console.log("New files (images or videos):", newFiles); // Debug, clarified in log
+  const files = newFiles.map((file) => file.file as unknown as File); // Safer cast via unknown
+  const uploadedFiles = await handleImagesOrVideosUploaded(newFiles, uploadFiles); // Use the utility function
+  setFormData({
+    ...formData,
+    productImages: [
+      ...formData.productImages,
+      ...uploadedFiles.map((file) => ({
+        ...file,
+        url: file.url || "", // Ensure url is a string
+      }) as const), // Type assertion to enforce UploadedFile shape
+    ],
+  });
+};
 
   const handleDocumentsUploaded = async (newDocuments: UploadedFile[]) => {
     const files = newDocuments.map((doc) => doc.file as unknown as File); // Safer cast via unknown
@@ -615,13 +620,13 @@ const handlePrevious = () => {
   };
 
   // Handler for removed images
-  const handleImageRemoved = async (fileId: string) => {
-    await removeImage(fileId);
-    setFormData({
-      ...formData,
-      productImages: formData.productImages.filter((img) => img.id !== fileId),
-    });
-  };
+const handleImageRemoved = async (fileId: string) => {
+  await removeFile(fileId);
+  setFormData({
+    ...formData,
+    productImages: formData.productImages.filter((file) => file.id !== fileId),
+  });
+};
 
   // Handler for removed documents
   const handleDocumentRemoved = async (fileId: string) => {
@@ -1784,18 +1789,18 @@ return (
                       onModelChange={(model) => setFormData((prev) => ({ ...prev, model }))}
                     />
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        {t("productImages")}
-                      </label>
-                      <FileUploader
-                        accept="image/*"
-                        type="image"
-                        uploadedFiles={formData.productImages}
-                        onFilesUploaded={handleImagesUploaded}
-                        onFileRemoved={handleImageRemoved}
-                      />
-                    </div>
+<div>
+  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+    {t("productImages")}
+  </label>
+  <FileUploader
+    accept="image/*,video/mp4,video/webm,video/quicktime"
+    type="media"
+    uploadedFiles={formData.productImages}
+    onFilesUploaded={handleImagesUploaded}
+    onFileRemoved={handleImageRemoved}
+  />
+</div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -2876,19 +2881,19 @@ return (
     </div>
 
     {/* Image Uploader (Using Step 2 Logic) */}
-    <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-        {t("productImages")}
-      </label>
-      <FileUploader
-        accept="image/*"
-        type="image"
-        uploadedFiles={formData.productImages}
-        onFilesUploaded={handleImagesUploaded}
-        onFileRemoved={handleImageRemoved}
-      />
-      {hasError("productImages") && <ErrorMessage message={getErrorMessage("productImages")} />}
-    </div>
+<div>
+  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+    {t("productImages")} {/* Update translation if needed to reflect media */}
+  </label>
+  <FileUploader
+    accept="image/jpeg,image/png,image/gif,video/mp4,video/webm,video/quicktime,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+    type="media"
+    uploadedFiles={formData.productImages}
+    onFilesUploaded={handleImagesUploaded}
+    onFileRemoved={handleImageRemoved}
+  />
+  {hasError("productImages") && <ErrorMessage message={getErrorMessage("productImages")} />}
+</div>
   </div>
 )}
 </div>
