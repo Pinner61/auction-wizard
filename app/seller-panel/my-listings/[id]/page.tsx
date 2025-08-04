@@ -36,7 +36,7 @@ interface Auction {
   auctionduration?: AuctionDuration;
   bidders?: number;
   watchers?: number;
-  productimages?: string[];
+  productimages?: string[]; // Can include images or video URLs
   productdocuments?: string[];
   productdescription?: string;
   specifications?: string; // JSON string or null
@@ -56,6 +56,12 @@ interface Auction {
   reserveprice?: number;
   auctionsubtype?: string;
 }
+
+// Function to determine if a URL is a video
+const isVideo = (url: string) => {
+  const ext = url.split(".").pop()?.toLowerCase();
+  return ext === "mp4" || ext === "webm" || ext === "mov"; // Add more video formats as needed
+};
 
 // Function to render key-value blocks from JSON data
 function renderKeyValueBlock(
@@ -196,13 +202,21 @@ export default function AuctionDetailPage() {
           <div className="lg:col-span-2 space-y-8">
             <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
               <CardContent className="p-0 relative">
-                <Image
-                  src={auction.productimages?.[currentImageIndex] || "/placeholder.svg"}
-                  alt={auction.productname || auction.title || "Auction Item"}
-                  width={800}
-                  height={500}
-                  className="w-full h-[450px] object-cover rounded-t-lg transition-transform duration-300 hover:scale-105"
-                />
+                {isVideo(auction.productimages?.[currentImageIndex] || "") ? (
+                  <video
+                    src={auction.productimages?.[currentImageIndex] || "/placeholder.svg"}
+                    controls
+                    className="w-full h-[450px] object-cover rounded-t-lg transition-transform duration-300"
+                  />
+                ) : (
+                  <Image
+                    src={auction.productimages?.[currentImageIndex] || "/placeholder.svg"}
+                    alt={auction.productname || auction.title || "Auction Item"}
+                    width={800}
+                    height={500}
+                    className="w-full h-[450px] object-cover rounded-t-lg transition-transform duration-300 hover:scale-105"
+                  />
+                )}
                 <div className="absolute top-4 right-4 bg-black/70 text-white text-sm px-3 py-1 rounded-full shadow-md">
                   {`${currentImageIndex + 1}/${auction.productimages?.length ?? 1}`}
                 </div>
@@ -220,16 +234,27 @@ export default function AuctionDetailPage() {
                 </button>
                 <div className="p-6 bg-white dark:bg-gray-800 rounded-b-lg">
                   <div className="flex gap-4 overflow-x-auto pb-2">
-                    {auction.productimages?.map((image, index) => (
-                      <Image
+                    {auction.productimages?.map((media, index) => (
+                      <div
                         key={index}
-                        src={image || "/placeholder.svg"}
-                        alt={`${auction.productname || auction.title} ${index + 1}`}
-                        width={120}
-                        height={90}
-                        className="w-24 h-18 object-cover rounded-lg cursor-pointer border-2 border-transparent hover:border-corporate-500 transition-all duration-300 hover:shadow-md"
                         onClick={() => setCurrentImageIndex(index)}
-                      />
+                        className="w-24 h-18 cursor-pointer border-2 border-transparent hover:border-corporate-500 transition-all duration-300 hover:shadow-md"
+                      >
+                        {isVideo(media) ? (
+                          <video
+                            src={media}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                        ) : (
+                          <Image
+                            src={media || "/placeholder.svg"}
+                            alt={`${auction.productname || auction.title} ${index + 1}`}
+                            width={120}
+                            height={90}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
