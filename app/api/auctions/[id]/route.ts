@@ -5,6 +5,23 @@ import { randomUUID } from "crypto";
 import { supabase } from "@/lib/supabaseClient";
 import { keysToLowerCase } from "@/utils/misc";
 
+export async function GET(req: Request, { params }: { params: { id: string } }) {
+  try {
+    const { data, error } = await supabase
+      .from("auctions")
+      .select("*")
+      .eq("id", params.id)
+      .single();
+
+    if (error) throw error;
+    if (!data) return NextResponse.json({ success: false, error: "Auction not found" }, { status: 404 });
+
+    return NextResponse.json({ success: true, data });
+  } catch (error) {
+    console.error("Error fetching auction details:", error);
+    return NextResponse.json({ success: false, error: "Failed to fetch auction details" }, { status: 500 });
+  }
+}
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const auctionId = params.id;
