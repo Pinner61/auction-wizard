@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AuthProvider } from "@/components/auth/auth-provider"; // Adjust the import path if needed
+import { AuthProvider } from "@/components/auth/auth-provider";
+import { ThemeProvider } from "@/theme-context";
 
 export const metadata: Metadata = {
   title: "Auction Wizard",
@@ -16,7 +17,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
