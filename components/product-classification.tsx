@@ -20,6 +20,21 @@ interface ProductClassificationProps {
   onModelChange: (model: string) => void
 }
 
+// Default condition options
+const DEFAULT_CONDITIONS = [
+  "New",
+  "Like New",
+  "Excellent",
+  "Very Good", 
+  "Good",
+  "Fair",
+  "Poor",
+  "For Parts/Not Working",
+  "Refurbished",
+  "Open Box",
+  "Custom" // This triggers the custom input
+]
+
 export default function ProductClassification({
   categoryId,
   subCategoryId,
@@ -41,6 +56,7 @@ export default function ProductClassification({
   const [customAttributeName, setCustomAttributeName] = useState("")
   const [customAttributeType, setCustomAttributeType] = useState<ProductAttribute["type"]>("text")
   const [customAttributeRequired, setCustomAttributeRequired] = useState(false)
+  const [customConditionText, setCustomConditionText] = useState("")
 
   // Filter categories based on search
   const filteredCategories = categorySearch ? searchCategories(categorySearch) : PRODUCT_CATEGORIES
@@ -58,6 +74,19 @@ export default function ProductClassification({
     if (categoryId || subCategoryId) {
       const targetCategoryId = subCategoryId || categoryId
       const defaultAttributes = getAttributesForCategory(targetCategoryId)
+
+      // Add condition attribute if it doesn't exist
+      const hasConditionAttribute = defaultAttributes.some(attr => attr.id === 'condition')
+      if (!hasConditionAttribute) {
+        defaultAttributes.push({
+          id: 'condition',
+          name: 'Condition',
+          type: 'select',
+          required: true,
+          options: DEFAULT_CONDITIONS,
+          value: ''
+        })
+      }
 
       // Merge with existing custom attributes
       const existingCustomAttributes = attributes.filter((attr) => attr.id.startsWith("custom-"))
@@ -87,7 +116,28 @@ export default function ProductClassification({
   }
 
   const handleAttributeChange = (attributeId: string, value: string) => {
-    const updatedAttributes = attributes.map((attr) => (attr.id === attributeId ? { ...attr, value } : attr))
+    const updatedAttributes = attributes.map((attr) => {
+      if (attr.id === attributeId) {
+        // If this is the condition attribute and "Custom" is selected, clear custom text
+        if (attributeId === 'condition' && value !== 'Custom') {
+          setCustomConditionText('')
+        }
+        return { ...attr, value }
+      }
+      return attr
+    })
+    onAttributesChange(updatedAttributes)
+  }
+
+  const handleCustomConditionChange = (value: string) => {
+    setCustomConditionText(value)
+    // Update the condition attribute with the custom value
+    const updatedAttributes = attributes.map((attr) => {
+      if (attr.id === 'condition') {
+        return { ...attr, value: value }
+      }
+      return attr
+    })
     onAttributesChange(updatedAttributes)
   }
 
@@ -111,6 +161,54 @@ export default function ProductClassification({
   }
 
   const renderAttributeInput = (attribute: ProductAttribute) => {
+    // Special handling for condition attribute
+    if (attribute.id === 'condition') {
+      const currentValue = attribute.value || ''
+      const isCustomSelected = currentValue === 'Custom' || (!DEFAULT_CONDITIONS.includes(currentValue) && currentValue !== '')
+      
+      return (
+        <div className="space-y-3">
+          <select
+            className="form-select"
+            value={isCustomSelected ? 'Custom' : currentValue}
+            onChange={(e) => {
+              if (e.target.value === 'Custom') {
+                handleAttributeChange(attribute.id, 'Custom')
+              } else {
+                handleAttributeChange(attribute.id, e.target.value)
+                setCustomConditionText('')
+              }
+            }}
+            required={attribute.required}
+          >
+            <option value="">Select condition</option>
+            {DEFAULT_CONDITIONS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+          
+          {(isCustomSelected || currentValue === 'Custom') && (
+            <div className="relative">
+              <input
+                type="text"
+                value={isCustomSelected && currentValue !== 'Custom' ? currentValue : customConditionText}
+                onChange={(e) => handleCustomConditionChange(e.target.value)}
+                placeholder="Enter custom condition (e.g., 'Lightly used - minor scratches')"
+                className="form-input pl-8"
+                required={attribute.required}
+              />
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span className="text-sm text-gray-500 dark:text-gray-400">✏️</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    // Default attribute rendering for other attributes
     switch (attribute.type) {
       case "select":
         return (
@@ -222,28 +320,6 @@ export default function ProductClassification({
               className="form-input"
             />
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Brand</label>
-            <input
-              type="text"
-              value={brand || ""}
-              onChange={(e) => onBrandChange(e.target.value)}
-              placeholder="Enter brand name"
-              className="form-input"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Model</label>
-            <input
-              type="text"
-              value={model || ""}
-              onChange={(e) => onModelChange(e.target.value)}
-              placeholder="Enter model name/number"
-              className="form-input"
-            />
-          </div>
         </div>
       </div>
 
@@ -347,11 +423,16 @@ export default function ProductClassification({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {attributes.map((attribute) => (
-              <div key={attribute.id} className="space-y-2">
+              <div key={attribute.id} className={`space-y-2 ${attribute.id === 'condition' ? 'md:col-span-2' : ''}`}>
                 <div className="flex items-center justify-between">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     {attribute.name}
                     {attribute.required && <span className="text-destructive-500 ml-1">*</span>}
+                    {attribute.id === 'condition' && (
+                      <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                        (Select "Custom" to enter your own condition)
+                      </span>
+                    )}
                   </label>
                   {attribute.id.startsWith("custom-") && (
                     <button
