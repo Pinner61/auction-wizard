@@ -1,66 +1,65 @@
-"use client";
+"use client"
 
-import type React from "react";
-import { useEffect, useState } from "react";
-import { Eye, EyeOff, Mail, Lock, Building, AlertCircle } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
-import { useRouter } from "next/navigation"; // ✅ Import router
+import React, { useEffect, useState } from "react"
+import { Eye, EyeOff, Mail, Lock, Building, AlertCircle } from "lucide-react"
+import { supabase } from "@/lib/supabaseClient"
+import type { User as SupabaseUser } from "@supabase/supabase-js"
+import { useRouter } from "next/navigation"
 
-export type UserRole = "admin" | "seller" | "both";
+export type UserRole = "admin" | "seller" | "both"
 
 export interface UserType {
-  id: string;
-  email: string;
-  fname: string;
-  lname: string;
-  role: UserRole;
-  organization?: string;
-  avatar?: string;
-  isVerified: boolean;
-  createdAt: string;
-  lastLogin?: string;
+  id: string
+  email: string
+  fname: string
+  lname: string
+  role: UserRole
+  organization?: string
+  avatar?: string
+  isVerified: boolean
+  createdAt: string
+  lastLogin?: string
 }
 
 interface LoginFormProps {
-  onLogin: (user: UserType) => void;
-  onSwitchToRegister: () => void;
+  onLogin: (user: UserType) => void
+  onSwitchToRegister: () => void
 }
 
 export default function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProps) {
-  const [formData, setFormData] = useState({ email: "", password: "" });
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [user, setUser] = useState<UserType | null>(null);
+  const [formData, setFormData] = useState({ email: "", password: "" })
+  const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [user, setUser] = useState<UserType | null>(null)
 
-  const router = useRouter(); // ✅ Initialize router
+  const router = useRouter()
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("auction_user");
-    if (storedUser) setUser(JSON.parse(storedUser));
-  }, []);
+    const storedUser = localStorage.getItem("auction_user")
+    if (storedUser) setUser(JSON.parse(storedUser))
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setIsLoading(true);
+    e.preventDefault()
+    setError("")
+    setIsLoading(true)
 
     const { data, error: authError } = await supabase.auth.signInWithPassword({
       email: formData.email,
       password: formData.password,
-    });
+    })
 
     if (authError) {
-      setError(authError.message);
-      setIsLoading(false);
-      return;
+      setError(authError.message)
+      setIsLoading(false)
+      return
     }
 
-    const supaUser: SupabaseUser = data.user;
-    const session = data.session;
+    const supaUser: SupabaseUser = data.user
+    const session = data.session
+    const meta = supaUser.user_metadata || {}
 
-    const meta = supaUser.user_metadata || {};
     let userTypeData: UserType = {
       id: supaUser.id,
       email: supaUser.email || meta.email || "",
@@ -72,55 +71,49 @@ export default function LoginForm({ onLogin, onSwitchToRegister }: LoginFormProp
       isVerified: !!supaUser.email_confirmed_at,
       createdAt: supaUser.created_at,
       lastLogin: new Date().toISOString(),
-    };
+    }
 
     try {
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("fname, lname")
         .eq("id", supaUser.id)
-        .single();
+        .single()
 
-      if (profileError) throw profileError;
+      if (profileError) throw profileError
       if (profile) {
         userTypeData = {
           ...userTypeData,
           fname: profile.fname || "",
           lname: profile.lname || "",
-        };
+        }
       }
     } catch (err) {
-      console.error("Profile fetch error:", err);
-      setError("Failed to load profile data.");
-      setIsLoading(false);
-      await supabase.auth.signOut();
-      return;
+      console.error("Profile fetch error:", err)
+      setError("Failed to load profile data.")
+      setIsLoading(false)
+      await supabase.auth.signOut()
+      return
     }
 
-    const allowedRoles = ["seller", "both", "admin"];
+    const allowedRoles = ["seller", "both", "admin"]
     if (!allowedRoles.includes(userTypeData.role.toLowerCase())) {
-      setError("Access denied. Only sellers or accounts with both roles can log in to this portal.");
-      setIsLoading(false);
-      await supabase.auth.signOut();
-      return;
+      setError("Access denied. Only sellers or accounts with both roles can log in to this portal.")
+      setIsLoading(false)
+      await supabase.auth.signOut()
+      return
     }
 
-// ✅ Final step after saving to localStorage
-localStorage.setItem("auction_user", JSON.stringify(userTypeData));
-localStorage.setItem("auction_session", JSON.stringify(session));
-setUser(userTypeData);
-onLogin(userTypeData);
+    // Store user data in localStorage (AuthProvider will also do this, but keeping for consistency)
+    localStorage.setItem("auction_user", JSON.stringify(userTypeData))
+    localStorage.setItem("auction_session", JSON.stringify(session))
+    setUser(userTypeData)
+    
+    // Call the parent's onLogin callback - this will call AuthProvider's login method
+    onLogin(userTypeData)
 
-// ✅ Role-based redirect
-if (userTypeData.role === "admin") {
-  router.push("/admin-panel");
-} else if (userTypeData.role === "seller" || userTypeData.role === "both") {
-  router.push("/seller-panel");
-}
-
-
-    setIsLoading(false);
-  };
+    setIsLoading(false)
+  }
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -197,7 +190,7 @@ if (userTypeData.role === "admin") {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-corporate-600 hover:bg-corporate-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center"
+            className="w-full bg-corporate-600 hover:bg-corporate-700 disabled:bg-gray-400 disabled:cursor-not-only text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center"
           >
             {isLoading ? (
               <>
@@ -208,8 +201,18 @@ if (userTypeData.role === "admin") {
               "Sign In"
             )}
           </button>
+
+          <div className="text-center mt-4">
+            <button
+              type="button"
+              onClick={onSwitchToRegister}
+              className="text-corporate-600 dark:text-corporate-400 hover:underline text-sm"
+            >
+              Don't have an account? Register here
+            </button>
+          </div>
         </form>
       </div>
     </div>
-  );
+  )
 }
