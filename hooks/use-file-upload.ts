@@ -34,14 +34,34 @@ export function useFileUpload(folder: "public" | "documents" = "public") {
   const isSupportedFileType = (file: File): boolean => {
     const supportedImageTypes = ["image/jpeg", "image/png", "image/gif"];
     const supportedVideoTypes = ["video/mp4", "video/webm", "video/quicktime"]; // Add more as needed
-    const supportedDocumentTypes = [
-      "application/pdf", // PDF
-      "application/msword", // DOC
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // DOCX
-      "text/plain", // TXT
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // XLSX
-      "application/vnd.ms-excel", // XLS
-    ]; // Add more document types as needed
+const supportedDocumentTypes = [
+  // Text & Word Processing
+  "application/pdf",                                           // .pdf
+  "application/msword",                                        // .doc
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
+  "application/rtf",                                           // .rtf
+  "text/plain",                                                // .txt
+  "application/vnd.oasis.opendocument.text",                   // .odt
+
+  // Spreadsheets
+  "application/vnd.ms-excel",                                  // .xls
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+  "text/csv",                                                  // .csv
+  "application/vnd.oasis.opendocument.spreadsheet",            // .ods
+
+  // Presentations
+  "application/vnd.ms-powerpoint",                             // .ppt
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation", // .pptx
+  "application/vnd.oasis.opendocument.presentation",           // .odp
+
+  // Markup & Code
+  "application/json",                                          // .json
+  "application/xml",                                           // .xml
+  "text/html",                                                 // .html, .htm
+  "text/css",                                                  // .css
+  "application/javascript",                                    // .js
+];
+
     return [
       ...supportedImageTypes,
       ...supportedVideoTypes,
