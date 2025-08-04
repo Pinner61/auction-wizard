@@ -61,9 +61,8 @@ export default function FileUploader({
       // Check file type based on 'type' prop
       const isImage = file.type.startsWith("image/");
       const isVideo = file.type.startsWith("video/");
-      const isDocument = type === "document" && [".pdf", ".doc", ".docx"].some((ext) =>
-        file.name.toLowerCase().endsWith(ext)
-      );
+      const isDocument = file.type.startsWith("application/") || file.type.startsWith("text/");
+      
       if (
         (type === "image" && !isImage) ||
         (type === "video" && !isVideo) ||
@@ -131,38 +130,38 @@ export default function FileUploader({
         onDragOver={handleDrag}
         onDrop={handleDrop}
       >
-        <div className="space-y-1 text-center">
-          <Upload className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
-          <div className="flex text-sm text-gray-600 dark:text-gray-400">
-            <label
-              htmlFor={`file-upload-${type}`}
-              className="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-corporate-600 dark:text-corporate-400 hover:text-corporate-500 dark:hover:text-corporate-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-corporate-500 dark:focus-within:ring-corporate-400 transition-colors-smooth"
-            >
-              <span>Upload {type === "media" ? "media" : type === "image" ? "images" : type === "video" ? "videos" : "documents"}</span>
-              <input
-                id={`file-upload-${type}`}
-                name={`file-upload-${type}`}
-                type="file"
-                className="sr-only"
-                accept={accept}
-                multiple
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                disabled={uploadState.isUploading}
-              />
-            </label>
-            <p className="pl-1">or drag and drop</p>
-          </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {type === "image"
-              ? "PNG, JPG, GIF up to 10MB"
-              : type === "video"
-              ? "MP4, WebM, MOV up to 10MB"
-              : type === "media"
-              ? "Images (PNG, JPG, GIF) or Videos (MP4, WebM, MOV) up to 10MB"
-              : "PDF, DOCX, XLSX up to 10MB"}
-          </p>
-        </div>
+<div className="space-y-1 text-center">
+  <Upload className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+  <div className="text-sm text-gray-600 dark:text-gray-400">
+    <label
+      htmlFor={`file-upload-${type}`}
+      className="cursor-pointer font-medium text-corporate-600 dark:text-corporate-400 hover:text-corporate-500 dark:hover:text-corporate-300 transition-colors"
+    >
+      Upload {type === "media" ? "media" : type === "image" ? "images" : type === "video" ? "videos" : "documents"} or drag and drop
+      <input
+        id={`file-upload-${type}`}
+        name={`file-upload-${type}`}
+        type="file"
+        className="sr-only"
+        accept={accept}
+        multiple
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        disabled={uploadState.isUploading}
+      />
+    </label>
+  </div>
+  <p className="text-xs text-gray-500 dark:text-gray-400">
+    {type === "image"
+      ? "PNG, JPG, GIF up to 10MB"
+      : type === "video"
+      ? "MP4, WebM, MOV up to 10MB"
+      : type === "media"
+      ? "Images (PNG, JPG, GIF) or Videos (MP4, WebM, MOV) up to 10MB"
+      : "PDF, DOCX, XLSX, CSV, etc. up to 10MB"}
+  </p>
+</div>
+
       </div>
 
       {/* Upload Progress */}
