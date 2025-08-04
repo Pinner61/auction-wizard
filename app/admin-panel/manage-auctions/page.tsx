@@ -30,6 +30,32 @@ export default function ManageAuctions() {
     pendingAuctions: 0,
   });
 
+  // Function to determine status based on ended and approved fields
+  const getStatus = (auction: Auction) => {
+    if (auction.ended) {
+      return "Ended";
+    } else if (auction.approved) {
+      return "Active";
+    } else {
+      return "Pending";
+    }
+  };
+
+  // Function to get status color classes
+  const getStatusColor = (auction: Auction) => {
+    const status = getStatus(auction);
+    switch (status) {
+      case "Active":
+        return "text-green-600 bg-green-100 dark:bg-green-900/20 dark:text-green-400";
+      case "Pending":
+        return "text-yellow-600 bg-yellow-100 dark:bg-yellow-900/20 dark:text-yellow-400";
+      case "Ended":
+        return "text-gray-600 bg-gray-100 dark:bg-gray-800 dark:text-gray-400";
+      default:
+        return "text-gray-600 bg-gray-100 dark:bg-gray-800 dark:text-gray-400";
+    }
+  };
+
   useEffect(() => {
     if (user && user.role !== "admin") {
       router.replace("/");
@@ -301,10 +327,7 @@ export default function ManageAuctions() {
                         Created By
                       </th>
                       <th className="p-4 text-sm font-semibold text-gray-600 dark:text-gray-400">
-                        Ended
-                      </th>
-                      <th className="p-4 text-sm font-semibold text-gray-600 dark:text-gray-400">
-                        Approved
+                        Status
                       </th>
                       <th className="p-4 text-sm font-semibold text-gray-600 dark:text-gray-400">
                         Auction Type
@@ -320,14 +343,24 @@ export default function ManageAuctions() {
                         key={auction.id}
                         className="border-t dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
                       >
-                        <td className="p-4">{auction.productname}</td>
+                        <td className="p-4">
+                          <button
+                            onClick={() => handleNavigate(`/admin-panel/manage-auctions/${auction.id}`)}
+                            className="text-corporate-600 hover:text-corporate-800 dark:text-corporate-400 dark:hover:text-corporate-200 underline"
+                          >
+                            {auction.productname}
+                          </button>
+                        </td>
                         <td className="p-4">{formatcreatedat(auction.createdat)}</td>
                         <td className="p-4">{auction.createdby}</td>
-                        <td className="p-4">{auction.ended ? "Yes" : "No"}</td>
-                        <td className="p-4">{auction.approved ? "Yes" : "No"}</td>
+                        <td className="p-4">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(auction)}`}>
+                            {getStatus(auction)}
+                          </span>
+                        </td>
                         <td className="p-4">{auction.auctiontype}</td>
                         <td className="p-4 flex space-x-2">
-                          {!auction.approved && (
+                          {!auction.approved && !auction.ended && (
                             <>
                               <Button
                                 variant="outline"
@@ -347,7 +380,7 @@ export default function ManageAuctions() {
                               </Button>
                             </>
                           )}
-                          {auction.approved && (
+                          {auction.approved && !auction.ended && (
                             <Button
                               variant="outline"
                               size="icon"
@@ -356,6 +389,11 @@ export default function ManageAuctions() {
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
+                          )}
+                          {auction.ended && (
+                            <span className="text-sm text-gray-500 dark:text-gray-400 px-2 py-1">
+                              No actions available
+                            </span>
                           )}
                         </td>
                       </tr>
